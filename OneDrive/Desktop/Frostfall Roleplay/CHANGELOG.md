@@ -5,6 +5,52 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [0.6.0] — 2026-04-15 — Plan 6: Faction BBB System & College Study Mechanic
+
+### Added
+- **`src/factions.ts`** — Faction membership registry with BBB document system
+  - `FactionDocument` interface: `{ factionId, benefits, burdens, bylaws, updatedAt, updatedBy }` — staff-authored governance document per faction
+  - `FactionMembership` interface: `{ factionId, rank, joinedAt }` — per-player, rank is a numeric ladder (0 = initiate)
+  - `getFactionDocument(mp, factionId)` — returns BBB document or null if unwritten
+  - `setFactionDocument(mp, doc)` — staff-only update; persists to `mp.set(0, 'ff_faction_docs', {...})` (world-keyed so any staff member can update without server restart)
+  - `joinFaction(mp, store, bus, playerId, factionId, rank?)` — adds membership, syncs `store.factions[]`, persists `FactionMembership[]` to `mp.set(actorId, 'ff_memberships', [...])`, dispatches `factionJoined`, sends packet; returns false for unknown player or duplicate join
+  - `leaveFaction(mp, store, bus, playerId, factionId)` — removes membership, syncs store, dispatches `factionLeft`; returns false if not a member
+  - `isFactionMember(mp, store, playerId, factionId)` — boolean
+  - `getPlayerFactionRank(mp, store, playerId, factionId)` — returns rank or null if not a member
+  - `getPlayerMemberships(mp, store, playerId)` — full membership records with rank and join timestamps
+  - `initFactions(mp, store, bus)` — on `playerJoined`: reloads persisted memberships into `store.factions[]`, sends `factionSync` packet
+  - Architecture note: BBB docs are world-keyed so staff can author/update documents live without touching server config. Memberships are per-player actorId so they survive character swaps cleanly.
+
+- **`src/college.ts`** — College of Winterhold study progression
+  - `CollegeRank` type: `'novice' | 'apprentice' | 'adept' | 'expert' | 'master'`
+  - `XP_THRESHOLDS`: novice=0, apprentice=100, adept=300, expert=600, master=1000
+  - `TOME_REGISTRY` — 10 Skyrim spell tomes mapped to study tier (form IDs); expandable
+  - `TOME_XP` — XP per tome tier: novice=15, apprentice=30, adept=50, expert=75, master=100
+  - `LECTURE_ATTENDEE_XP = 50`, `LECTURE_TEACHER_XP = 25`, `LECTURE_BOOST_MS = 24h`
+  - `getCollegeRank(xp)` — pure function; highest threshold not exceeding xp
+  - `getTomeRank(tomeBaseId)` — returns tier or null for unregistered tomes
+  - `getStudyXp(mp, store, playerId)` — reads `ff_study_xp` from mp
+  - `getCollegeRankForPlayer(mp, store, playerId)` — convenience wrapper
+  - `studyTome(mp, store, bus, playerId, tomeBaseId)` — solo study; adds `TOME_XP[tier]` to `ff_study_xp`; returns false for unknown player or unregistered tome
+  - `LectureSession` interface: `{ lecturerId, startedAt, attendees: PlayerId[] }`
+  - `startLecture(mp, store, bus, lecturerId)` — creates in-memory session; dispatches `lectureStarted`; returns false if unknown or already lecturing
+  - `joinLecture(mp, store, bus, playerId, lecturerId)` — adds attendee; returns false if no active lecture, player is the lecturer, or already attending
+  - `endLecture(mp, store, bus, lecturerId, now?)` — awards `LECTURE_ATTENDEE_XP` + sets `ff_lecture_boost` (24h timestamp) for each attendee; awards `LECTURE_TEACHER_XP` to lecturer (no boost — they're already high rank); dispatches `lectureEnded` with attendeeCount; clears session
+  - `hasLectureBoost(mp, store, playerId, now?)` — true while `ff_lecture_boost > now`
+  - `getLectureBoostRemainingMs(mp, store, playerId, now?)` — ms remaining; 0 if none/expired
+  - `initCollege(mp, store, bus)` — registers `ff_study_xp` and `ff_lecture_boost` makeProperties; `ff_lecture_boost` has a `updateOwner` expression that returns `{ magickaRegenMult: 1.15, boostActive: 1 }` while boost is active; on `playerJoined`: sends XP/rank sync packet and active boost notification if applicable
+  - Architecture note: Active lecture sessions are intentionally in-memory only — sessions don't survive a server restart, which is correct behaviour (a lecturer must re-start their session). Study XP and boost timestamps persist via `mp.set` per the bounty/prison pattern.
+
+- **`src/types/index.ts`** — Added `CollegeRank` type; added `factionJoined`, `factionLeft`, `lectureStarted`, `lectureEnded` to `GameEventType`
+
+- **`src/index.ts`** — Wired `initFactions` and `initCollege` into boot sequence
+
+### Tests
+- `tests/factions.test.ts` — 28 tests: getFactionDocument (null/found), setFactionDocument (persists, overwrites, cross-faction isolation), joinFaction (store sync, persistence, event, default rank, explicit rank, unknown guard, duplicate guard, multi-faction), leaveFaction (removes, event, not-member guard, cross-faction isolation), isFactionMember (false/true/false lifecycle), getPlayerFactionRank (null/value/null lifecycle), getPlayerMemberships (empty, shape, multi, unknown)
+- `tests/college.test.ts` — 42 tests: getCollegeRank (all thresholds, above max), getTomeRank (novice, master, unknown), getStudyXp (fresh, unknown, post-study), studyTome (unknown/unregistered guards, novice XP, adept XP, accumulation, rank advancement), startLecture (unknown guard, session creation, event, duplicate guard, empty attendees), joinLecture (adds attendee, no-lecture guard, self-join guard, duplicate guard, multi-attendee), endLecture (no-lecture guard, removes session, attendee XP, teacher XP, boost set, no teacher boost, event attendeeCount), hasLectureBoost (false/true/expired), getLectureBoostRemainingMs (zero/positive/expired)
+
+---
+
 ## [0.5.0] — 2026-04-15 — Plan 5: Bounty, KOID, Combat, NVFL, Captivity, Prison
 
 ### Added
@@ -239,4 +285,4 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
-*192 tests passing as of [0.5.0]. Compiles clean. dist/ ready for server config.*
+*262 tests passing as of [0.6.0]. Compiles clean. dist/ ready for server config.*

@@ -44,6 +44,8 @@ export type FactionId =
   | 'eastEmpireCompany'
   | 'confederationOfTemples';
 
+export type CollegeRank = 'novice' | 'apprentice' | 'adept' | 'expert' | 'master';
+
 // -----------------------------------------------------------
 // Inventory (matches SkyMP's built-in inventory property)
 // -----------------------------------------------------------
@@ -132,6 +134,10 @@ export type GameEventType =
   | 'playerReleased'
   | 'playerArrested'
   | 'playerSentenced'
+  | 'factionJoined'
+  | 'factionLeft'
+  | 'lectureStarted'
+  | 'lectureEnded'
   | 'bountyChanged'
   | 'propertyRequested'
   | 'propertyApproved'

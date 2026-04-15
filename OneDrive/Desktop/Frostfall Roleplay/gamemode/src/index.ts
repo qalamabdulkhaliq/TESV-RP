@@ -21,11 +21,11 @@ import { initDrunkBar } from './drunkBar';
 import { initEconomy }  from './economy';
 import { initCourier }  from './courier';
 import { initHousing }  from './housing';
-import { initBounty }   from './bounty';
+import { initBounty }    from './bounty';
+import { initFactions }  from './factions';
+import { initCollege }   from './college';
 // Future system imports (uncomment as each plan is executed):
 // import { initResources } from './resources';
-// import { initFactions }  from './factions';
-// import { initCollege }   from './college';
 // import { initKoid }      from './koid';
 // import { initCombat }    from './combat';
 // import { initNvfl }      from './nvfl';
@@ -53,6 +53,8 @@ initEconomy(mp, store, bus);
 initCourier(mp, store, bus);
 initHousing(mp, store, bus);
 initBounty(mp, store, bus);
+initFactions(mp, store, bus);
+initCollege(mp, store, bus);
 
 // ---------------------------------------------------------------------------
 // SkyMP event hooks

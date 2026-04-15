@@ -1,2 +1,11 @@
 gamemode/dist
 gamemode/node_modules
+
+# SkyMP reference clone and installer binaries
+skymp-reference/
+InstallSkyMP*.bin
+InstallSkyMP*.exe
+SkyMP*.exe
+
+# Claude local state
+.claude/
