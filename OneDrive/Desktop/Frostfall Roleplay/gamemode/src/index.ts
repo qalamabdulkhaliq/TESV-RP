@@ -19,11 +19,10 @@ import { PlayerStore } from './store';
 import { initHunger }   from './hunger';
 import { initDrunkBar } from './drunkBar';
 import { initEconomy }  from './economy';
+import { initCourier }  from './courier';
+import { initHousing }  from './housing';
 // Future system imports (uncomment as each plan is executed):
-// import { initEconomy }   from './economy';
 // import { initResources } from './resources';
-// import { initHousing }   from './housing';
-// import { initCourier }   from './courier';
 // import { initBounty }    from './bounty';
 // import { initKoid }      from './koid';
 // import { initCombat }    from './combat';
@@ -49,6 +48,8 @@ const store = new PlayerStore();
 initHunger(mp, store, bus);
 initDrunkBar(mp, store, bus);
 initEconomy(mp, store, bus);
+initCourier(mp, store, bus);
+initHousing(mp, store, bus);
 
 // ---------------------------------------------------------------------------
 // SkyMP event hooks
