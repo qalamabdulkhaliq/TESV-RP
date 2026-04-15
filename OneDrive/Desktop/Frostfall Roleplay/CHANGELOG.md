@@ -5,6 +5,82 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [0.5.0] — 2026-04-15 — Plan 5: Bounty, KOID, Combat, NVFL, Captivity, Prison
+
+### Added
+- **`src/bounty.ts`** — Per-hold bounty system
+  - `BountyRecord` interface: `{ holdId, amount, updatedAt }`
+  - `GUARD_KOID_THRESHOLD = 1000` — bounty that makes a player KOID-eligible by Hold Guards
+  - `getBounty(mp, store, playerId, holdId)` — returns bounty in a hold, 0 if none
+  - `getAllBounties(mp, store, playerId)` — all holds with non-zero bounty
+  - `isGuardKoid(mp, store, playerId, holdId)` — true when bounty ≥ threshold
+  - `addBounty(mp, store, bus, playerId, holdId, amount)` — accumulates bounty, persists, dispatches `bountyChanged`, sends `bountyUpdate` packet; returns false for zero/negative/unknown
+  - `clearBounty(mp, store, bus, playerId, holdId)` — zeros a hold's bounty (paid fine, Jarl's pardon); returns false if no bounty to clear
+  - `initBounty(mp, store, bus)` — on `playerJoined`: loads persisted records, syncs per-hold map to player store, sends `bountySync` packet if records exist
+  - Persists via `mp.set(actorId, 'ff_bounty', BountyRecord[])` per player
+  - Store field `PlayerState.bounty` updated as `Partial<Record<HoldId, number>>` (per-hold map)
+
+- **`src/koid.ts`** — Kill-on-ID faction permission registry
+  - `KoidPair` interface: `{ a, b, description }` where a/b are `FactionId | 'guard' | 'highBounty'`
+  - `KOID_PAIRS` — 3 canonical KOID relationships:
+    - Thalmor ↔ Stormcloak Underground
+    - Imperial Garrison ↔ Stormcloak Underground
+    - Hold Guards ↔ high-bounty players
+  - `hasKoidPermission(factionA, factionB)` — symmetric check; returns true if either direction matches
+  - `getKoidPair(factionA, factionB)` — returns matching `KoidPair` or null
+  - `getKoidTargeters(faction)` — all identifiers that have KOID permission against a given faction
+  - Pure functions — no runtime dependencies, no state
+
+- **`src/combat.ts`** — Downed state management
+  - `LOOT_CAP_GOLD = 500` — maximum gold a victor may loot (client-enforced)
+  - `LOOT_CAP_ITEMS = 3` — maximum items a victor may loot (client-enforced)
+  - `isDowned(store, playerId)` — boolean; reads `PlayerState.isDown`
+  - `downPlayer(mp, store, bus, victimId, attackerId)` — sets `isDown=true`, `downedAt=now`; sends `playerDowned` packet with loot caps to both parties; dispatches `playerDowned` event; returns false if unknown or already downed
+  - `risePlayer(mp, store, bus, playerId)` — clears `isDown`; preserves `downedAt` so NVFL window persists; sends `playerRisen` packet; dispatches `playerRisen` event; returns false if not downed
+  - No `init` function — invoked directly by game event handlers and staff commands
+
+- **`src/nvfl.ts`** — No Value For Life restriction tracking
+  - `NVFL_WINDOW_MS = 24 * 60 * 60 * 1000` — 24 IRL hours from time of downing
+  - `isNvflRestricted(store, playerId, now?)` — pure; true when `downedAt` is within the window; does not use mp or bus — reads only from store
+  - `getNvflRemainingMs(store, playerId, now?)` — ms remaining in restriction; 0 if not restricted
+  - `clearNvfl(store, playerId)` — sets `downedAt = null`; used for Jarl pardons and in-game day resets
+  - Entirely pure — no persistence calls; `downedAt` in PlayerState is the single source of truth
+
+- **`src/captivity.ts`** — Cuffs / binding system with 24-hour hard cap
+  - `MAX_CAPTIVITY_MS = 24 * 60 * 60 * 1000`
+  - `isCaptive(store, playerId)` — reads `PlayerState.isCaptive`
+  - `getCaptivityRemainingMs(store, playerId, now?)` — ms until auto-release; 0 if not captive
+  - `capturePlayer(mp, store, bus, captiveId, captorId)` — sets `isCaptive=true`, `captiveAt=now`; sends `playerCaptured` packet with timer info to both parties; dispatches `playerCaptured` event; returns false if unknown or already captive
+  - `releasePlayer(mp, store, bus, captiveId)` — clears `isCaptive` and `captiveAt`; sends `playerReleased` packet; dispatches `playerReleased` event; returns false if not captive
+  - `checkExpiredCaptivity(mp, store, bus, now?)` — iterates all online players; auto-releases any whose `captiveAt + MAX_CAPTIVITY_MS ≤ now`; returns array of released player IDs; called on the 60s server tick
+
+- **`src/prison.ts`** — Arrest → Jarl judicial queue
+  - `SentenceType` union: `'fine' | 'release' | 'banish'`
+  - `PrisonQueueEntry` interface: `{ playerId, holdId, arrestedBy, queuedAt }`
+  - `SentenceDetails` interface: `{ type, fineAmount?, note? }`
+  - `getQueue(mp, holdId?)` — returns full queue or filtered by hold
+  - `isQueued(mp, playerId)` — boolean
+  - `queueForSentencing(mp, store, bus, playerId, holdId, arrestingOfficerId, notifyId)` — adds to queue, persists, sends courier `prisonRequest` notification to Jarl, dispatches `playerArrested` event, sends `playerArrested` packet; returns false if unknown or already queued
+  - `sentencePlayer(mp, store, bus, playerId, jarlId, sentence)` — applies effects, removes from queue, dispatches `playerSentenced`:
+    - `'fine'`: deducts `min(fineAmount, player.septims)` from gold; clears Hold bounty
+    - `'release'`: clears Hold bounty
+    - `'banish'`: clears Hold bounty; sends banishment packet for client-side teleport
+  - Queue persisted via `mp.set(0, 'ff_prison_queue', PrisonQueueEntry[])`
+
+- **`src/types/index.ts`** — Added `'playerRisen'` and `'playerSentenced'` to `GameEventType`
+
+- **`src/index.ts`** — Wired `initBounty` into boot sequence
+
+### Tests
+- `tests/bounty.test.ts` — 17 tests: getBounty, getAllBounties, addBounty (accumulation, event, store sync, guards), clearBounty (clears, returns false when none, doesn't affect other holds, store sync), isGuardKoid (threshold logic, hold isolation)
+- `tests/koid.test.ts` — 12 tests: registry integrity, hasKoidPermission (canonical pairs, symmetry, unrelated factions, self), getKoidPair (direct, reverse, null), getKoidTargeters
+- `tests/combat.test.ts` — 13 tests: loot cap constants, isDowned, downPlayer (state, timestamp, event, packets, unknown, double-down), risePlayer (clears state, preserves downedAt, event, not-downed guard, unknown)
+- `tests/nvfl.test.ts` — 9 tests: window constant, isNvflRestricted (fresh, unknown, immediate, within window, expired), getNvflRemainingMs (zero, positive, expired), clearNvfl
+- `tests/captivity.test.ts` — 14 tests: cap constant, isCaptive, capturePlayer (state, timestamp, event, packets, unknown, double-capture), releasePlayer (clears, event, not-captive guard), getCaptivityRemainingMs, checkExpiredCaptivity (releases expired, preserves active, returns IDs)
+- `tests/prison.test.ts` — 15 tests: getQueue, isQueued, queueForSentencing (adds, event, courier notify, unknown guard, double-queue guard), sentencePlayer — release (removes, event, not-queued guard), fine (deducts gold, caps at balance, removes), banish (removes, packet)
+
+---
+
 ## [0.4.0] — 2026-04-15 — Plan 4: Courier & Housing
 
 ### Added
@@ -163,4 +239,4 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
-*99 tests passing as of [0.4.0]. Compiles clean. dist/ ready for server config.*
+*192 tests passing as of [0.5.0]. Compiles clean. dist/ ready for server config.*
