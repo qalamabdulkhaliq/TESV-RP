@@ -16,9 +16,9 @@ import type { Mp } from './skymp';
 import { EventBus } from './events';
 import { PlayerStore } from './store';
 
+import { initHunger }   from './hunger';
+import { initDrunkBar } from './drunkBar';
 // Future system imports (uncomment as each plan is executed):
-// import { initHunger }    from './hunger';
-// import { initDrunkBar }  from './drunkBar';
 // import { initEconomy }   from './economy';
 // import { initResources } from './resources';
 // import { initHousing }   from './housing';
@@ -42,10 +42,11 @@ const bus = new EventBus();
 const store = new PlayerStore();
 
 // ---------------------------------------------------------------------------
-// SYSTEMS — init each system here as plans are executed
+// SYSTEMS
 // ---------------------------------------------------------------------------
 
-// (none yet — wired in subsequent plans)
+initHunger(mp, store, bus);
+initDrunkBar(mp, store, bus);
 
 // ---------------------------------------------------------------------------
 // SkyMP event hooks
