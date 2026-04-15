@@ -9,3 +9,7 @@ SkyMP*.exe
 
 # Claude local state
 .claude/
+
+# Local-only docs (rules, Discord structure — not for repo)
+docs/RULES.md
+docs/DISCORD_STRUCTURE.md
