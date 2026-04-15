@@ -40,14 +40,14 @@ Frostfall Roleplay is a SkyMP narrative roleplay server built for the TES fans t
 ### Divergence from Canon
 This timeline diverges from canon at the conclusion of the Great War. The White-Gold Concordat's terms were harsher:
 
-- **Ulfric Stormcloak was executed** rather than imprisoned and released. He is a martyr, not a general. The Stormcloak name survives him; the rebellion does not — yet.
+- **Ulfric Stormcloak was arrested and is awaiting sentencing.** He is a prisoner, not a general. The province knows he was taken. Most assume he will be held, ransomed politically, or quietly disappear. What happens to him is the launch event — not history.
 - **The High Kingship of Skyrim was abolished.** Jarls now answer directly to Imperial authority. There is no native head of state.
 - **Talos worship is banned and actively hunted** by Thalmor Justiciars operating throughout the province.
 
 ### What This Means for the World
 - The Jarls are governors under occupation — collaborators or quiet rebels, depending on who plays them.
 - There is no Dragonborn, no main quest, no prophecy pulling focus. Player stories fill that vacuum.
-- The Stormcloak resistance is scattered, leaderless, and underground — rallying around a dead man's name.
+- The Stormcloak resistance is anxious and leaderless in practice — their figurehead is in Imperial custody, and nobody knows what's being done to him.
 - The moral landscape is murky in all the right ways.
 
 ### Named Canonical Characters
@@ -76,7 +76,7 @@ Each Hold has a Jarl (political authority, judicial power, licensing, taxation) 
 | Hold | Capital | Unique Resource | Signature Institution | Temple / Faith |
 |------|---------|----------------|----------------------|----------------|
 | Whiterun Hold | Whiterun | Grain, livestock | The Companions | Temple of Kynareth |
-| Eastmarch | Windhelm | Furs, harbor trade | Stormcloak Underground *(informal, beneath the surface)* | Temple of Talos *(shuttered/secret)* |
+| Eastmarch | Windhelm | Furs, harbor trade | Stormcloak Underground *(informal, waiting, holding their breath)* | Temple of Talos *(shuttered/secret)* |
 | The Rift | Riften | Fish, mead, lumber | Thieves Guild | Temple of Mara |
 | The Reach | Markarth | Silver, Dwemer salvage | Forsworn *(opposition)* | Temple of Dibella |
 | Haafingar | Solitude | Imports, exports, port | Bards College | Temple of the Divines *(grand seat)* |
@@ -161,7 +161,7 @@ Factions that violate their Bylaws face in-world consequences, not OOC punishmen
 | Faction | Status |
 |---------|--------|
 | Dark Brotherhood | Does not canonically exist on this server. Players may *claim* the name — that's interesting. It has no staff support, no BBB document, no mechanical recognition. |
-| Stormcloaks *(as organized army)* | No standing army, no formal structure. The underground movement in Windhelm (§3.1) exists as a pressure and a whisper, not a faction with a BBB document. If players build it into something real, that emergence is the story — not a staff decision. |
+| Stormcloaks *(as organized army)* | No standing army, no formal structure. At launch their leader is a prisoner. The underground movement in Windhelm (§3.1) exists as a pressure and a whisper, not a faction with a BBB document. What they become after the launch event is entirely up to the players who carry that name. |
 
 ---
 
