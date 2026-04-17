@@ -5,6 +5,32 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [0.8.0] — 2026-04-17 — Plan 8: Command Interface
+
+### Added
+- **`src/permissions.ts`** — Player role storage (`player | leader | staff`) via `ff_role` in `mp.set`. `hasPermission()` uses numeric level comparison. Default role is `player`.
+- **`src/commands.ts`** — Command registry, chat message parser (`/cmd arg1 arg2`), player name resolver (case-insensitive), feedback sender (`commandFeedback` packet), and dispatcher with permission gate. Unknown commands and permission failures send `commandFeedback` packets to the caller.
+- **`src/playerCommands.ts`** — Registers all player-accessible commands at init:
+  - `/lecture start|join [name]|end` — wraps college lecture session functions
+  - `/train start [skill]|join [name]|end` — wraps training session functions
+  - `/skill (skillId)` — shows XP, level, and cap per skill
+  - `/pay [amount] [name]` — gold transfer
+  - `/bounty` — self-check bounties across all holds
+  - `/capture [name]` — takes a downed player captive
+  - `/release [name]` — releases a captive
+  - `/property list|request [id]` — list available properties, submit purchase request
+- **`src/index.ts`** — `customPacket` handler now routes `chatMessage` type packets to `dispatchCommand`
+
+### Architecture notes
+- All command handlers are thin wrappers — no business logic lives in the command layer
+- `stewardId` in `/property request` is temporarily `0` pending hold leadership resolution (Plan 9)
+- Leader and staff commands (arrest, sentence, faction management, staff utilities) are in Plan 9
+
+### Tests
+- 8 tests in `permissions.test.ts`, 15 tests in `commands.test.ts`, 25 tests in `playerCommands.test.ts` — 357 total passing
+
+---
+
 ## [0.7.0] — 2026-04-17 — Plan 7: Skill Caps & Training System
 
 ### Added

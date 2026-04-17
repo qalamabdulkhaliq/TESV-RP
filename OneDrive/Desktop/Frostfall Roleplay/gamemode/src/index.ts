@@ -24,8 +24,10 @@ import { initHousing }  from './housing';
 import { initBounty }    from './bounty';
 import { initFactions }  from './factions';
 import { initCollege }   from './college';
-import { initSkills }    from './skills';
-import { initTraining }  from './training';
+import { initSkills }         from './skills';
+import { initTraining }        from './training';
+import { dispatchCommand }     from './commands';
+import { initPlayerCommands }  from './playerCommands';
 // Future system imports (uncomment as each plan is executed):
 // import { initResources } from './resources';
 // import { initKoid }      from './koid';
@@ -59,6 +61,7 @@ initFactions(mp, store, bus);
 initCollege(mp, store, bus);
 initSkills(mp, store, bus);
 initTraining(mp, store, bus);
+initPlayerCommands(mp, store, bus);
 
 // ---------------------------------------------------------------------------
 // SkyMP event hooks
@@ -95,17 +98,18 @@ mp.on('disconnect', (userId: number) => {
 });
 
 mp.on('customPacket', (userId: number, rawContent: string) => {
-  // Custom packets from the client are handled by individual systems.
-  // Systems register their own mp.on('customPacket') listeners or
-  // subscribe to bus events dispatched here. Currently a no-op.
+  const player = store.get(userId);
+  if (!player) return;
+
+  let packet: { customPacketType?: string; message?: string };
   try {
-    const content = JSON.parse(rawContent) as Record<string, unknown>;
-    const type = content['customPacketType'];
-    if (typeof type === 'string') {
-      console.log(`[Frostfall] customPacket from userId=${userId} type=${type}`);
-    }
+    packet = JSON.parse(rawContent);
   } catch {
-    // malformed packet — ignore
+    return;
+  }
+
+  if (packet.customPacketType === 'chatMessage' && typeof packet.message === 'string') {
+    dispatchCommand(mp, store, bus, userId, packet.message);
   }
 });
 
