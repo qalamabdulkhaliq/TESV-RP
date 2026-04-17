@@ -5,6 +5,36 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [0.9.0] — 2026-04-17 — Plan 9: Staff & Governance Commands
+
+### Added
+- **`src/treasury.ts`** — Hold treasury ledger: `getTreasuryBalance`, `getAllTreasuryBalances`, `depositToTreasury`, `withdrawFromTreasury`. Keyed to actor 0 (`ff_treasury`) — same pattern as faction docs. Dispatches `treasuryChanged` on every mutation. Foundation for Plans 10–15 (tax income, property escrow, UBI).
+- **`src/staffCommands.ts`** — Registers all leader and staff commands via `initStaffCommands`:
+  - `/arrest [name] [holdId]` — queues player for Jarl sentencing (leader)
+  - `/sentence [name] [fine|release|banish] [amount?]` — applies sentence from queue (leader)
+  - `/down [name]` / `/rise [name]` — force downed/risen state (leader)
+  - `/role set [name] [role]` — sets player role, dispatches `roleChanged` (staff)
+  - `/faction add|remove|rank [name] [factionId] [rank?]` — membership management (staff)
+  - `/treasury view|deposit|withdraw [holdId] [amount?]` — hold ledger access (leader)
+
+### Modified
+- **`src/playerCommands.ts`** — `/bounty` extended with `add` and `clear` sub-commands (staff-only via internal `hasPermission` check). `/property` extended with `approve`, `summon`, `deny`, `setprice` sub-commands (staff-only).
+- **`src/housing.ts`** — Added `summonProperty` (sends `propertySummon` packet, dispatches `propertySummoned`) and `setPropertyPrice` (updates `price?` on property record).
+- **`src/factions.ts`** — Added `setFactionRank` (updates rank in `ff_memberships`, dispatches `factionJoined` with new rank, sends `factionSync`).
+- **`src/types/index.ts`** — `Property` interface gains optional `price?: number`. `GameEventType` gains `roleChanged`, `propertySummoned`, `treasuryChanged`.
+- **`src/index.ts`** — Wired `initTreasury(mp)` and `initStaffCommands(mp, store, bus)`.
+
+### Architecture notes
+- Staff sub-commands for `/bounty` and `/property` live inside the same command handler as the player sub-commands — a single `registerCommand` call per noun keeps the dispatch table clean and avoids Map overwrites.
+- `/treasury` commands are `leader`-permission — Jarls and Hold leaders manage hold finances; staff (with higher numeric level) also satisfy this.
+- `setFactionRank` reuses the `factionJoined` event intentionally — the client treats it as a rank update, not a new join.
+- `initTreasury` is a no-op today; it exists as a stable hook for Plans 10–15 to attach top-up listeners.
+
+### Tests
+- 13 tests in `treasury.test.ts`, 44 tests in `staffCommands.test.ts` — **414 total passing**
+
+---
+
 ## [0.8.0] — 2026-04-17 — Plan 8: Command Interface
 
 ### Added

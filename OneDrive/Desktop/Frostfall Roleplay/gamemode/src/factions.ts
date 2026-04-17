@@ -205,6 +205,41 @@ export function getPlayerFactionRank(
 }
 
 /**
+ * Update a player's rank within a faction they already belong to.
+ * Returns false if player unknown or not a member of factionId.
+ * Reuses the factionJoined event so the client can treat it as a rank update.
+ */
+export function setFactionRank(
+  mp: Mp,
+  store: PlayerStore,
+  bus: EventBus,
+  playerId: PlayerId,
+  factionId: FactionId,
+  rank: number,
+): boolean {
+  const player = store.get(playerId);
+  if (!player) return false;
+
+  const memberships = loadMemberships(mp, player.actorId);
+  const entry = memberships.find((m) => m.factionId === factionId);
+  if (!entry) return false;
+
+  entry.rank = rank;
+  saveMemberships(mp, player.actorId, memberships);
+
+  bus.dispatch({
+    type: 'factionJoined',
+    payload: { playerId, factionId, rank },
+    timestamp: Date.now(),
+  });
+
+  sendPacket(mp, playerId, 'factionSync', { memberships });
+
+  console.log(`[Factions] ${player.name} rank in ${factionId} set to ${rank}`);
+  return true;
+}
+
+/**
  * Returns all faction memberships for a player (with rank and join timestamp).
  */
 export function getPlayerMemberships(

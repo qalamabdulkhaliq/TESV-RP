@@ -28,6 +28,8 @@ import { initSkills }         from './skills';
 import { initTraining }        from './training';
 import { dispatchCommand }     from './commands';
 import { initPlayerCommands }  from './playerCommands';
+import { initTreasury }        from './treasury';
+import { initStaffCommands }   from './staffCommands';
 // Future system imports (uncomment as each plan is executed):
 // import { initResources } from './resources';
 // import { initKoid }      from './koid';
@@ -62,6 +64,8 @@ initCollege(mp, store, bus);
 initSkills(mp, store, bus);
 initTraining(mp, store, bus);
 initPlayerCommands(mp, store, bus);
+initTreasury(mp);
+initStaffCommands(mp, store, bus);
 
 // ---------------------------------------------------------------------------
 // SkyMP event hooks

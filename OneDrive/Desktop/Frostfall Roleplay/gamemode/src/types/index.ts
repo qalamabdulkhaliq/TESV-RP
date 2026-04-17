@@ -123,6 +123,8 @@ export interface Property {
   holdId: HoldId;
   ownerId: PlayerId | null;
   type: PropertyType;
+  /** Asking price in septims. Set by Jarl/Steward via /property setprice. */
+  price?: number;
   pendingRequestBy: PlayerId | null;
   /** Unix ms timestamp of purchase request, null if none pending */
   pendingRequestAt: number | null;
@@ -152,7 +154,10 @@ export type GameEventType =
   | 'propertyApproved'
   | 'hungerTick'
   | 'drunkChanged'
-  | 'stipendTick';
+  | 'stipendTick'
+  | 'roleChanged'
+  | 'propertySummoned'
+  | 'treasuryChanged';
 
 export interface GameEvent<T = unknown> {
   type: GameEventType;

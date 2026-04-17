@@ -256,6 +256,64 @@ export function revokeProperty(
   return true;
 }
 
+/**
+ * Summon a player to a property hearing.
+ * Sends a `propertySummon` packet to the requesting player and dispatches
+ * `propertySummoned`. Returns false if property not found or no pending request.
+ */
+export function summonProperty(
+  mp: Mp,
+  store: PlayerStore,
+  bus: EventBus,
+  propertyId: PropertyId,
+  summonerId: PlayerId,
+): boolean {
+  const property = properties.get(propertyId);
+  if (!property || property.pendingRequestBy === null) return false;
+
+  const requesterId = property.pendingRequestBy;
+  sendPacket(mp, requesterId, 'propertySummon', { propertyId, holdId: property.holdId });
+
+  bus.dispatch({
+    type: 'propertySummoned',
+    payload: { propertyId, requesterId, summonedBy: summonerId },
+    timestamp: Date.now(),
+  });
+
+  console.log(`[Housing] ${propertyId} — player ${requesterId} summoned for hearing by ${summonerId}`);
+  return true;
+}
+
+/**
+ * Set or update the asking price for a property.
+ * Sends an updated `propertyList` packet to the owner/requester if online.
+ * Returns false if property not found.
+ */
+export function setPropertyPrice(
+  mp: Mp,
+  propertyId: PropertyId,
+  price: number,
+): boolean {
+  const property = properties.get(propertyId);
+  if (!property) return false;
+
+  property.price = price;
+  properties.set(propertyId, property);
+  saveProperties(mp);
+
+  // Notify owner and/or requester so their UI reflects the new price
+  const interested = [property.ownerId, property.pendingRequestBy].filter(
+    (id): id is PlayerId => id !== null,
+  );
+  const holdProps = getPropertiesByHold(property.holdId);
+  for (const id of interested) {
+    sendPacket(mp, id, 'propertyList', { properties: holdProps });
+  }
+
+  console.log(`[Housing] ${propertyId} price set to ${price}`);
+  return true;
+}
+
 /** Expose properties map for testing */
 export function _getPropertiesMap(): Map<PropertyId, Property> {
   return properties;
