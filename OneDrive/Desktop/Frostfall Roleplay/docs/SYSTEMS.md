@@ -403,10 +403,79 @@
 
 ---
 
+## Skills (`src/skills.ts`)
+
+### Constants
+- `SKILL_LEVEL_XP`: 10 XP per skill level
+- Default cap: 250 XP (~level 25) for all skills with no faction bonus
+- `SkillId`: `destruction | restoration | alteration | conjuration | illusion | smithing | enchanting | alchemy`
+
+### Faction cap bonuses
+| Faction | Min Rank | Skills Raised | Cap |
+|---------|----------|---------------|-----|
+| collegeOfWinterhold | 1 | Magic schools | 500 |
+| collegeOfWinterhold | 2 | Magic schools | 750 |
+| collegeOfWinterhold | 3 | Magic schools | 1000 |
+| companions | 1/2/3 | smithing | 500/750/1000 |
+| eastEmpireCompany | 1/2 | smithing, enchanting, alchemy | 500/750 |
+| thievesGuild | 1/2 | alchemy | 500/750 |
+| bardsCollege | 1/2 | enchanting | 500/750 |
+
+### Functions
+- `getSkillLevel(xp)`: pure, floor(xp / SKILL_LEVEL_XP)
+- `getSkillXp(mp, playerId, skillId)`: reads `ff_skill_xp`
+- `getSkillCap(mp, store, playerId, skillId)`: derived from faction memberships, no extra state
+- `addSkillXp(mp, store, playerId, skillId, baseXp, now?)`: applies boost multiplier, enforces cap, returns actual XP added
+- `grantStudyBoost(mp, playerId, skillId, multiplier, onlineMs)`: persists boost to `ff_study_boosts`
+- `getActiveStudyBoost(mp, playerId, skillId, now?)`: consumes elapsed session time, returns boost or null
+- `getStudyBoosts(mp, playerId)`: raw list
+- `_consumeBoostTime(mp, playerId, now?)`: drains elapsed session time from all boosts
+- `onSkillPlayerDisconnect(mp, playerId, now?)`: persist drain and clear session start
+- `initSkills(mp, store, bus)`: registers makeProperties, records session start on join, drains on leave
+
+### makeProperties
+- `ff_skill_xp`: visible to owner, no client expression
+- `ff_study_boosts`: visible to owner, no client expression
+
+### Persistence
+- `mp.set(actorId, 'ff_skill_xp', Partial<Record<SkillId, number>>)`
+- `mp.set(actorId, 'ff_study_boosts', StudyBoost[])`
+
+### Notes
+- Boost remainingOnlineMs drains on disconnect, not on wall clock
+- XP grant hooks (spell cast, forge use) are stubbed pending SkyMP event investigation
+
+---
+
+## Training (`src/training.ts`)
+
+### Constants
+- `TRAINING_BOOST_MULTIPLIER`: 2.0x XP multiplier granted to attendees
+- `TRAINING_BOOST_ONLINE_MS`: 24 IRL hours of online time
+- `TRAINING_LOCATION_RADIUS`: 500 Skyrim units (~70m) max distance to join
+
+### Functions
+- `startTraining(mp, store, bus, trainerId, skillId)`: creates in-memory session, dispatches event
+- `joinTraining(mp, store, bus, playerId, trainerId)`: location check, adds to attendees
+- `endTraining(mp, store, bus, trainerId)`: grants boost to all attendees, dispatches event, clears session
+- `getActiveTraining(trainerId)`: returns session or null
+- `initTraining(mp, store, bus)`: no-op at startup, sessions are in-memory only
+
+### Events dispatched
+- `trainingStarted`: `{ trainerId, skillId }`
+- `trainingEnded`: `{ trainerId, skillId, attendeeCount }`
+
+### Notes
+- Sessions do not survive server restart (intentional)
+- Trainer receives no boost, only attendees do
+- Wire `/train start|join|end` commands once command layer is built
+
+---
+
 ## What Is Not Yet Built
 
 ### Command interface
-- No `/lecture start`, `/arrest`, `/sentence`, `/bounty add`, `/property request` commands
+- No `/lecture start`, `/arrest`, `/sentence`, `/bounty add`, `/property request`, `/train start` commands
 - All API functions exist but have no invocation path
 - The `customPacket` handler in `index.ts` logs and does nothing
 
@@ -454,4 +523,6 @@
 | prison | 15 |
 | factions | 28 |
 | college | 42 |
-| **Total** | **262** |
+| skills | 29 |
+| training | 18 |
+| **Total** | **309** |
