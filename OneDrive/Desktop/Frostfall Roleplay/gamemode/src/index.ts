@@ -24,6 +24,8 @@ import { initHousing }  from './housing';
 import { initBounty }    from './bounty';
 import { initFactions }  from './factions';
 import { initCollege }   from './college';
+import { initSkills }    from './skills';
+import { initTraining }  from './training';
 // Future system imports (uncomment as each plan is executed):
 // import { initResources } from './resources';
 // import { initKoid }      from './koid';
@@ -55,6 +57,8 @@ initHousing(mp, store, bus);
 initBounty(mp, store, bus);
 initFactions(mp, store, bus);
 initCollege(mp, store, bus);
+initSkills(mp, store, bus);
+initTraining(mp, store, bus);
 
 // ---------------------------------------------------------------------------
 // SkyMP event hooks

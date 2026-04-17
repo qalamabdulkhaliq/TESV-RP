@@ -46,6 +46,13 @@ export type FactionId =
 
 export type CollegeRank = 'novice' | 'apprentice' | 'adept' | 'expert' | 'master';
 
+export const SKILL_IDS = [
+  'destruction', 'restoration', 'alteration', 'conjuration', 'illusion',
+  'smithing', 'enchanting', 'alchemy',
+] as const;
+
+export type SkillId = typeof SKILL_IDS[number];
+
 // -----------------------------------------------------------
 // Inventory (matches SkyMP's built-in inventory property)
 // -----------------------------------------------------------
@@ -138,6 +145,8 @@ export type GameEventType =
   | 'factionLeft'
   | 'lectureStarted'
   | 'lectureEnded'
+  | 'trainingStarted'
+  | 'trainingEnded'
   | 'bountyChanged'
   | 'propertyRequested'
   | 'propertyApproved'

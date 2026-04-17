@@ -5,6 +5,34 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [0.7.0] — 2026-04-17 — Plan 7: Skill Caps & Training System
+
+### Added
+- **`src/skills.ts`** — Per-skill XP tracking with faction-rank-derived caps
+  - `SkillId` type: `destruction | restoration | alteration | conjuration | illusion | smithing | enchanting | alchemy`
+  - Default cap: 250 XP (~skill level 25) — functional but limited without faction investment
+  - `FACTION_SKILL_CAP_BONUSES` — cap raise table: College rank 1/2/3 raises magic skills to 500/750/1000; Companions raises smithing; EEC raises smithing/enchanting/alchemy; Thieves Guild raises alchemy; Bards College raises enchanting
+  - `getSkillCap(mp, store, playerId, skillId)` — pure derivation from current faction memberships, no extra stored state
+  - `addSkillXp(mp, store, playerId, skillId, baseXp)` — applies active boost multiplier, enforces cap, returns actual XP added
+  - `grantStudyBoost(mp, playerId, skillId, multiplier, onlineMs)` — grants a time-gated XP multiplier persisted via `ff_study_boosts`
+  - Online-time boost drain: elapsed session time is consumed from `remainingOnlineMs` on every disconnect, so a player who logs off mid-boost resumes with the correct remainder
+
+- **`src/training.ts`** — In-person training sessions
+  - `startTraining(mp, store, bus, trainerId, skillId)` — trainer opens a session for a specific skill
+  - `joinTraining(mp, store, bus, playerId, trainerId)` — location check (500 Skyrim units radius); fails if out of range, already attending, or no active session
+  - `endTraining(mp, store, bus, trainerId)` — grants 2× XP multiplier lasting 24h online time to all attendees; trainer gets no boost; dispatches `trainingEnded`
+  - Sessions are in-memory only (intentional — sessions don't survive server restarts)
+
+### Architecture notes
+- Skill caps are derived on read from faction memberships — adding a new faction tier requires only a `FACTION_SKILL_CAP_BONUSES` entry, no schema change
+- Study boosts use online-time accounting, not wall-clock, so logging off doesn't consume boost time
+- XP grant hooks (forge activation → smithing XP, spell cast → magic school XP) are stubbed pending SkyMP event surface investigation
+
+### Tests
+- 29 tests in `skills.test.ts`, 18 tests in `training.test.ts` — 309 total passing
+
+---
+
 ## [0.6.0] — 2026-04-15 — Plan 6: Faction BBB System & College Study Mechanic
 
 ### Added
