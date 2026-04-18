@@ -5,6 +5,182 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [0.9.9] — 2026-04-18 — Fix: correct SkyMP event API (property assignment, not mp.on)
+
+### Fixed
+- **`gamemode/combat.js`** — `mp.on('onDeath', ...)` replaced with `mp.onDeath = (actorId, killerId) => {...}` (verified against ScampServerListener.cpp and test_isdead.js). Handler returns `false` to block auto-respawn, keeping the actor dead in downed state. Returns `true` for NPC deaths (allow normal server-managed respawn).
+- **`gamemode/combat.js`** — Removed `mp.kill()` and `mp.respawn()` calls (neither method exists on the `mp` object per ScampServer.cpp instance method list). Execution now uses `mp.set(actorId, 'isDead', false)` to revive the downed actor, then teleports via `mp.set(actorId, 'locationalData', {...})` after 500ms. Bleed-out follows the same pattern.
+- **`gamemode/combat.js`** — `mp.set(actorId, 'pos', ...)` replaced with `mp.set(actorId, 'locationalData', ...)` — PosBinding.cpp throws if `pos` is set directly. `HOLD_TEMPLE_SPAWNS` entries updated to `{ pos: [...], cellOrWorldDesc: null, label }` format to match locationalData schema.
+- **`gamemode/combat.js`** — Removed `_pendingExecution` and `_executionSpawns` — no longer needed since downed actors are already dead and can be revived+teleported directly without re-triggering `onDeath`.
+- **`gamemode/combat.js`** — `revivePlayer` now calls `mp.set(victim.actorId, 'isDead', false)` to actually revive the actor (previously only updated store and sent packets).
+- **`gamemode/magic.js`** — `mp.on('OnSpellCast', ...)` replaced with `mp['onPapyrusEvent:OnSpellCast'] = (casterActorId, spellArg) => {...}` — Papyrus events use property assignment per ScampServerListener.cpp. Spell formId extracted via `mp.getIdFromDesc(spellArg.desc)` since additional Papyrus args arrive as `{ type, desc }` form descriptors (verified against test_onPapyrusEvent_OnItemAdded.js).
+- **`gamemode/magic.js`** — `mp.on('onHit', ...)` removed entirely — `HitEvent.cpp` does not exist in `gamemode_events/`; there is no `mp.onHit` gamemode property. Destruction-on-hit XP (`XP_ON_HIT`) dropped. If needed later, requires `onPapyrusEvent:OnHit` with a Papyrus script attached to actors.
+- **`gamemode/magic.js`** — Removed `XP_ON_HIT` constant.
+
+### Notes
+- `HOLD_TEMPLE_SPAWNS.cellOrWorldDesc` values are still `null` placeholders — `_teleportToSpawn` skips the locationalData call if null, so bleed-out/execution silently revives in place until real coordinates are filled in.
+- `onPapyrusEvent:OnSpellCast` only fires if the SkyMP client forwards spell cast events to the server — depends on Skyrim Platform hooks configured on the client side.
+
+---
+
+## [0.9.8] — 2026-04-18 — magic.js: spell school XP, Detect Life, /skill-dice broadcast
+
+### Added
+- **`gamemode/magic.js`** — Magic system module:
+  - `SPELL_SCHOOL` map: ~75 base-game spell formIds → school (destruction/restoration/alteration/illusion/conjuration). Verify formIds against CK if discrepancies appear. Custom/modded spells fall through without XP.
+  - `OnSpellCast` hook: awards `XP_ON_CAST (3)` to the detected school. Detect Life/Detect Dead (Alteration) also trigger `_handleDetectLife` — finds all online players within 3000 game units of the caster and sends `detectLifeResult { nearby: [{ name }] }` packet.
+  - `onHit` hook: awards `XP_ON_HIT (8)` to Destruction when `source` (spell formId) is a known Destruction spell. Melee hits pass `source = 0` and are ignored.
+  - `handleSkillDice(mp, store, bus, userId, args)` — handles `/skill-dice` commands:
+    - `init` → sends `skillDiceInit { skills: { [school]: { level } }, weapons: [], armor: null }` packet. Weapons/armor omitted — client reads equipped state from game engine.
+    - `magic [school] [value] [buff]` → hold-broadcasts `★ Name — school: value (+buff)` and awards `XP_ON_ROLL (5)` to that school.
+    - `weapon/defence/initiative [type] [value] [buff]` → hold-broadcasts the roll result (no XP — combat schools handled separately).
+    - `heal/self-attack [hp]` → hold-broadcasts HP change narration.
+    - `wolf/vampus on|off` → hold-broadcasts form shift.
+- **`gamemode/index.js`** — `magic` required, `magic.init(mp, store, bus)` called, passed to `registerAll`.
+- **`gamemode/commands.js`** — `/skill-dice` handler routes to `magic.handleSkillDice`.
+
+### Design notes
+- Illusion, Alteration behavior effects (Calm, Fear, Paralysis, etc.) are NPC-only per server rules. XP still awarded on cast — the spell is cast, the effect doesn't bind players.
+- Telekinesis is cosmetic RP — specifically useful for mage thief characters. Earns Alteration XP on cast.
+- Detect Life shows online players as living actors within range. Detect Dead also triggers it (players are not undead — they simply appear as living).
+- Conjuration against Man, Mer, or Beast-folk is a server law violation. Summons follow vanilla AI and will attack player targets if directed; the caster is responsible. Bound weapons are unrestricted.
+- `OnSpellCast` signature assumed `(casterActorId, spellFormId)` — verify against SkyMP scampNative.
+- `onHit` uses only the first three args; remaining four are unused in this handler.
+
+---
+
+## [0.9.7] — 2026-04-18 — Fix loot cap: gold is an item slot (3 total, not 3+gold)
+
+### Fixed
+- **`gamemode/combat.js`** — `openLootSession` now includes gold as an entry in the `items` array sent to the client. Gold takes one of the 3 available slots; there is no separate gold transfer. `completeLootSession` no longer accepts a `takeGold` boolean — gold is selected like any other item in `selectedItems`. Gold count is still capped at `min(onBodyGold, 500)` — if the victim has 200g the client sees 200, if 800g it sees 500.
+
+---
+
+## [0.9.6] — 2026-04-18 — Loot sessions, execution respawn (temple/home chain), communal temple spawns
+
+### Changed
+- **`gamemode/combat.js`** — `lootPlayer` replaced with a two-phase loot session:
+  - `openLootSession(mp, store, bus, inv, looterPlayerId, victimPlayerId)` — builds available loot (gold capped at `min(actual gold, 500)`, all non-gold items), creates a 60-second session, sends `openLootMenu` packet to the looter with `{ sessionId, victimName, gold, items, maxItems: 3 }`. Client renders selection UI.
+  - `completeLootSession(mp, store, bus, inv, looterPlayerId, packet)` — validates `lootSelection` packet: checks session exists, belongs to this looter, not expired; validates `selectedItems` against the session's item list; enforces 3-item cap; calls `inv.transferItem` for gold and each selected item.
+  - Session map `_lootSessions` keyed by `sessionId`; sessions expire after 60s (checked on completion).
+- **`gamemode/combat.js`** — `executePlayer` now resolves a respawn point before killing:
+  - Priority: (1) `player.templeHoldId` → that hold's communal temple; (2) any owned `home` property; (3) `player.holdId` → hold's communal temple; (4) absolute fallback: Whiterun's Temple of Kynareth.
+  - Spawn stored in `_executionSpawns` map before kill; consumed in `onDeath` handler (500ms delay → `mp.respawn` + `_teleportToSpawn`).
+  - `playerExecuted` packet now includes `spawnLabel` so client can display "You will wake at [Temple of Mara]".
+  - Signature changed: `(mp, store, bus, prison, housing, executorId, victimId)`.
+  - `HOLD_TEMPLE_SPAWNS` table defined for all 9 holds — coordinates are placeholder `{ x:0, y:0, z:0, cell:null }` pending real-world fill.
+- **`gamemode/commands.js`**:
+  - `/loot` now calls `combat.openLootSession` instead of the old atomic transfer.
+  - `/execute` now passes `housing` to `combat.executePlayer`.
+  - `customPacket` handler extended: `lootSelection` packets routed to `combat.completeLootSession`; `chatMessage` path unchanged.
+- **`gamemode/prison.js`** — `_appendPrior` renamed `appendPrior` and exported (needed by `executePlayer`).
+
+### Architecture notes
+- Loot gold display logic: server sends the actual capped amount (`min(onBodyGold, 500)`). If the victim has 200g, looter sees 200g. If 800g, looter sees 500g. `takeGold` is a bool — looter takes all shown gold or none.
+- Temple affiliation (`templeHoldId`) is not yet settable in-game; a future `/temple pledge` command will write it to the player store.
+- `HOLD_TEMPLE_SPAWNS` coordinates need to be filled with verified SkyMP world positions before execution respawn works correctly.
+
+---
+
+## [0.9.5] — 2026-04-18 — Downed stage: onDeath intercept, bleed-out timer, /revive /execute /loot
+
+### Added
+- **`gamemode/combat.js`** — Full downed-stage implementation:
+  - `onDeath` hook in `init`: when SkyMP fires death for a player actor, immediately calls `mp.respawn(actorId)` (verify binding name) + `downPlayer`. NPC deaths and sanctioned executions are ignored.
+  - `BLEED_OUT_MS = 180 000` ms bleed-out timer — starts in `downPlayer`, auto-clears `isDown` and fires `playerBledOut` bus event if nobody acts.
+  - `revivePlayer(mp, store, bus, reviverId, victimId)` — clears bleed timer, calls `risePlayer`, sends `playerRevived` packet to both parties.
+  - `executePlayer(mp, store, bus, prison, executorId, victimId)` — clears timer, logs `type: 'execution'` prior via `prison.appendPrior`, marks actor in `_pendingExecution` set to skip re-intercept, calls `mp.kill` (verify binding).
+  - `lootPlayer(mp, store, bus, inv, looterPlayerId, victimPlayerId)` — transfers up to `LOOT_CAP_GOLD` (500) gold and `LOOT_CAP_ITEMS` (3) non-gold items from downed victim to looter via `inv.transferItem`.
+  - `risePlayer` now also calls `_clearBleedTimer`.
+  - `downPlayer` guards against double-down (`if victim.isDown return`).
+  - Exports: `revivePlayer`, `executePlayer`, `lootPlayer`, `BLEED_OUT_MS`.
+- **`gamemode/commands.js`** — Three new player commands:
+  - `/revive [name]` — any player; calls `combat.revivePlayer`; requires target to be downed.
+  - `/execute [name]` — any player; calls `combat.executePlayer`; requires target to be downed.
+  - `/loot [name]` — any player; calls `combat.lootPlayer`; replies with gold and item count taken.
+  - `inventory` destructured from systems as `inv` for loot command.
+- **`gamemode/prison.js`** — `_appendPrior` renamed to `appendPrior` and exported; all internal call sites updated.
+- **`gamemode/index.js`** — `inventory` required and passed to `registerAll`.
+
+### Architecture notes
+- The `_pendingExecution` set breaks the onDeath re-intercept loop: `executePlayer` adds the actor before calling `mp.kill`; `onDeath` removes it and returns, allowing real death.
+- `mp.respawn` and `mp.kill` binding names need verification against SkyMP scampNative — wrapped in `typeof` guards so a wrong name doesn't crash the server.
+- Bleed-out (3 min, no action) is a soft death: `isDown` clears, `downedAt` preserved for NVFL window. Execute is a hard death: prior record written, engine kills the actor.
+
+---
+
+## [0.9.4] — 2026-04-18 — roleplay.js; /setdescription, /examine, /racemenu; prison priors
+
+### Added
+- **`gamemode/roleplay.js`** — RP identity module:
+  - `setDescription(mp, actorId, text)` — persists `ff_description` (max 400 chars); sets `ff_characterReady = true` on first call
+  - `getDescription(mp, actorId)` → string or null
+  - `getRaceName(mp, actorId)` → string; reads `appearance.raceId` and maps to display name via static table of all 10 playable races
+  - `openRaceMenu(mp, actorId)` → bool; calls `mp.setRaceMenuOpen(actorId, true)` only if `!ff_characterReady`
+  - `resetRaceMenu(mp, actorId)` — staff-only; clears `ff_characterReady` and re-opens race menu
+  - `examinePlayer(mp, store, examiningId, targetId, { bounty, prison })` → packet; returns name, race, description; appends `warrant` block if examiner is `isLeader`/`isStaff` and target has an active bounty or prior record in the examiner's hold only (per-hold, vanilla scoping)
+- **`gamemode/commands.js`** — three new commands:
+  - `/setdescription [text]` — any player; sets character description
+  - `/examine [name]` — any player; sends `examine` packet to client; leaders/staff see warrant block scoped to their hold
+  - `/racemenu` — fresh characters only; `/racemenu reset [name]` is staff-only
+- **`gamemode/prison.js`** — `getPriors(mp, actorId, holdId)` — returns prior sentence records filtered by hold. `sentencePlayer` now appends to `ff_priors` on the target's actor before removing the queue entry. Prior record shape: `{ holdId, type, fineAmount, sentencedAt }`.
+
+### Architecture notes
+- `ff_characterReady` is set permanently on first `/setdescription` — `/racemenu` is locked out after that without a staff reset
+- Warrant display is scoped to `examiner.holdId` — a Whiterun leader sees only Whiterun bounty and Whiterun priors, not other holds
+- Race lookup is a static map; no runtime Skyrim API call needed
+
+---
+
+## [0.9.3] — 2026-04-18 — Remove gold abstraction; add transferItem and getAll
+
+### Modified
+- **`gamemode/inventory.js`** — Removed `getGold`/`setGold`. Gold is `baseId 0x0000000F`, not a special case — confirmed against SkyMP's `MpActor.cpp` which has no gold API, only an engine-level block on dropping it. Added `transferItem(mp, fromActorId, toActorId, baseId, count)` → bool (atomic: removeItem then addItem, returns false if source has insufficient count). Added `getAll(mp, actorId)` → entries array for inspection, loot preview, confiscation.
+- **`gamemode/economy.js`** — `transferGold` now calls `inv.transferItem` with `GOLD_BASE_ID` then reads back the new count from inv to sync the store cache. Stipend tick uses `inv.addItem` + `inv.getItemCount` readback. `onConnect` syncs `septims` via `inv.getItemCount`. No raw `mp.get/set(actorId, 'inv', ...)` calls remain.
+
+### Architecture notes
+- Gold moves through the same path as any other item. The store's `septims` field is a session cache only — always written from an inv readback, never calculated independently.
+- `transferItem` is the primitive for all server-mediated item movement: loot from downed players, confiscation on arrest, prison intake. Player-to-player trade and shop stock use SkyMP's native container sync.
+
+---
+
+## [0.9.2] — 2026-04-18 — inventory.js shared utility; migrate economy.js
+
+### Added
+- **`gamemode/inventory.js`** — Shared inventory read/write utility. All item access goes through here — no system touches `mp.get(actorId, 'inv')` raw.
+  - `getItemCount(mp, actorId, baseId)` → number
+  - `hasItem(mp, actorId, baseId, count)` → bool
+  - `addItem(mp, actorId, baseId, count)` → void
+  - `removeItem(mp, actorId, baseId, count)` → bool (false if insufficient)
+  - `getGold(mp, actorId)` → number
+  - `setGold(mp, actorId, amount)` → void
+  - Uses `'inv'` key (not `'inventory'`) matching Frost's gamemode convention
+
+### Modified
+- **`gamemode/economy.js`** — Removed private `_getGoldFromInventory` / `_setGoldInInventory` helpers and all raw `mp.get/set(actorId, 'inv', ...)` calls. Replaced with `inv.getGold` / `inv.setGold` from the shared module.
+
+---
+
+## [0.9.1] — 2026-04-18 — Wire treasury; add /treasury and /role set
+
+### Added
+- **`gamemode/index.js`** — `treasury` is now required, initialized (`treasury.init(mp, store, bus)`), and passed into `commands.registerAll`. Prior to this it existed as a module but was never started.
+- **`gamemode/commands.js`** — `/treasury` command (leader permission):
+  - `/treasury` — lists all nine hold balances
+  - `/treasury balance [holdId]` — shows a single hold's balance
+  - `/treasury withdraw [holdId] [amount]` — withdraws from a hold; leaders are restricted to their own hold (`player.holdId === holdId`); staff bypass this check
+  - `/treasury deposit [holdId] [amount]` — staff-only manual deposit (admin correction tool)
+- **`gamemode/commands.js`** — `/role set [name] player|leader|staff` (staff permission):
+  - Updates `isStaff` and `isLeader` flags on the target's store entry
+  - Notifies both the staff member and the target player
+  - Previously there was no in-game way to assign roles; flags were hardcoded `false` at connect
+
+### Architecture notes
+- Hold restriction on `/treasury withdraw` is enforced server-side: a Whiterun leader cannot drain Riften's treasury. Staff role bypasses this for admin corrections.
+- `isLeader` is set `true` for both `leader` and `staff` roles so permission checks remain a simple level comparison.
+
+---
+
 ## [0.9.0] — 2026-04-17 — Plan 9: Staff & Governance Commands
 
 ### Added
