@@ -5,6 +5,54 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [1.0.3] — 2026-04-19 — Wire captivity tick; fill HOLD_TEMPLE_SPAWNS from Red House COC data
+
+### Added
+- **`gamemode/src/captivity.ts`** — `initCaptivity(mp, store, bus)`: registers a `setInterval` every 5 min to call `checkExpiredCaptivity`; auto-releases any player whose 24h captivity timer has expired
+- **`gamemode/src/index.ts`** — `initCaptivity(mp, store, bus)` wired in. Removed dead `initResources/initKoid/initNvfl/initPrison` comments (those are pure-logic modules with no init, already imported directly by command handlers)
+- **`gamemode/src/combat.ts`** — `HOLD_TEMPLE_SPAWNS`: all 9 holds filled with real coords sourced from Red House `/server/data/xelib/coc-markers.json` and `coc/cell.json`:
+  - whiterun → `WhiterunTempleofKynareth` (`0165A7:Skyrim.esm`)
+  - eastmarch → `WindhelmPalaceoftheKings` (`01677C:Skyrim.esm`)
+  - rift → `RiftenBeeandBarb` (`016BDF:Skyrim.esm`)
+  - reach → `MarkarthTempleofDibella` (`016DF3:Skyrim.esm`)
+  - haafingar → `SolitudeTempleoftheDivines` (`016A02:Skyrim.esm`)
+  - pale → Dawnstar outdoor worldspace (`3c:Skyrim.esm`)
+  - falkreath → `FalkreathBarracksJail` (`0EF324:Skyrim.esm`)
+  - hjaalmarch → Morthal outdoor worldspace (`3c:Skyrim.esm`)
+  - winterhold → `WinterholdCollegeHallofTheElements` (`01380E:Skyrim.esm`)
+
+---
+
+## [1.0.2] — 2026-04-19 — /status, /help, /examine player commands
+
+### Added
+- **`gamemode/src/playerCommands.ts`**:
+  - `/status` — shows hold, septims (from actor inventory), hunger/drunk levels, faction memberships with ranks, and per-hold bounties
+  - `/help` — role-aware command list; calls `getCommandNames` which filters the registry by the player's effective role
+  - `/examine [name]` — inspect another player's public profile (name, hold, factions, bounties); ported from old commands.js
+- **`gamemode/src/commands.ts`** — `getCommandNames(mp, playerId): string[]` iterates registry, filters by `hasPermission`, returns sorted `['/cmd', ...]`
+
+### Tests
+- 12 new tests; suite now **440 tests, all green**
+
+---
+
+## [1.0.1] — 2026-04-19 — Hold assignment: /hold join, /hold set, /hold leave + persist on reconnect
+
+### Added
+- **`gamemode/src/playerCommands.ts`** — `/hold` command (player permission):
+  - `/hold` — shows current hold (`none` if unassigned)
+  - `/hold join [holdId]` — player declares allegiance; updates store, persists `ff_holdId`, dispatches `holdAssigned` event
+  - `/hold leave` — clears hold assignment, persists `null`
+  - `/hold set [name] [holdId]` — staff-only subcommand; assigns another player to a hold, notifies both parties
+- **`gamemode/src/types/index.ts`** — `holdAssigned` added to `GameEventType` union
+- **`gamemode/src/index.ts`** — `mp.on('connect')` now restores persisted `ff_holdId` from `mp.get(userId, 'ff_holdId')` after `registerPlayer`; validates against `ALL_HOLDS` before applying
+
+### Tests
+- 12 new tests across `playerCommands.test.ts` and `staffCommands.test.ts`; suite now **427 tests, all green**
+
+---
+
 ## [1.0.0] — 2026-04-18 — Chat system: browser↔server bridge, commands, RP broadcast
 
 ### Added

@@ -6,6 +6,9 @@ import * as college from '../src/college';
 import * as training from '../src/training';
 import * as economy from '../src/economy';
 import * as captivity from '../src/captivity';
+import * as factions from '../src/factions';
+import * as bountyMod from '../src/bounty';
+import { setPlayerRole } from '../src/permissions';
 
 function makeMp(positions: Record<number, { x: number; y: number; z: number }> = {}): any {
   const storage: Record<string, unknown> = {};
@@ -261,5 +264,169 @@ describe('/property request', () => {
     const { mp, store, bus } = setup();
     dispatchCommand(mp, store, bus, 1, '/property request');
     expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('Usage'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /hold
+// ---------------------------------------------------------------------------
+
+describe('/hold (status)', () => {
+  it('reports none when no hold assigned', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/hold');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('none'));
+  });
+
+  it('reports current hold when assigned', () => {
+    const { mp, store, bus } = setup();
+    store.update(1, { holdId: 'whiterun' });
+    dispatchCommand(mp, store, bus, 1, '/hold');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('whiterun'));
+  });
+});
+
+describe('/hold join', () => {
+  it('assigns hold and persists it', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/hold join whiterun');
+    expect(store.get(1)?.holdId).toBe('whiterun');
+    expect(mp.set).toHaveBeenCalledWith(1, 'ff_holdId', 'whiterun');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('whiterun'));
+  });
+
+  it('rejects unknown holdId', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/hold join gondor');
+    expect(store.get(1)?.holdId).toBeNull();
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('"success":false'));
+  });
+
+  it('dispatches holdAssigned event', () => {
+    const { mp, store, bus } = setup();
+    let fired = false;
+    bus.on('holdAssigned', () => { fired = true; });
+    dispatchCommand(mp, store, bus, 1, '/hold join eastmarch');
+    expect(fired).toBe(true);
+  });
+});
+
+describe('/hold leave', () => {
+  it('clears hold and persists null', () => {
+    const { mp, store, bus } = setup();
+    store.update(1, { holdId: 'whiterun' });
+    dispatchCommand(mp, store, bus, 1, '/hold leave');
+    expect(store.get(1)?.holdId).toBeNull();
+    expect(mp.set).toHaveBeenCalledWith(1, 'ff_holdId', null);
+  });
+
+  it('sends error when not in a hold', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/hold leave');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('"success":false'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /status
+// ---------------------------------------------------------------------------
+
+describe('/status', () => {
+  it('shows hold as none when unassigned', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/status');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('Hold: none'));
+  });
+
+  it('shows assigned hold', () => {
+    const { mp, store, bus } = setup();
+    store.update(1, { holdId: 'whiterun' });
+    dispatchCommand(mp, store, bus, 1, '/status');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('Hold: whiterun'));
+  });
+
+  it('shows hunger and drunk levels', () => {
+    const { mp, store, bus } = setup();
+    store.update(1, { hungerLevel: 7, drunkLevel: 3 });
+    dispatchCommand(mp, store, bus, 1, '/status');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('7/10'));
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('3/10'));
+  });
+
+  it('shows faction memberships', () => {
+    const { mp, store, bus } = setup();
+    factions.joinFaction(mp, store, bus, 1, 'companions');
+    dispatchCommand(mp, store, bus, 1, '/status');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('companions'));
+  });
+
+  it('shows bounties when present', () => {
+    const { mp, store, bus } = setup();
+    store.update(1, { bounty: { whiterun: 250 } });
+    dispatchCommand(mp, store, bus, 1, '/status');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('whiterun: 250'));
+  });
+
+  it('shows none for bounties when clear', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/status');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('Bounties: none'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /help
+// ---------------------------------------------------------------------------
+
+describe('/help', () => {
+  it('returns a list of commands the player can use', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/help');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('/status'));
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('/help'));
+  });
+
+  it('lists multiple known commands', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/help');
+    const msg = (mp.sendCustomPacket as jest.Mock).mock.calls
+      .filter((c: unknown[]) => c[0] === 1).map((c: unknown[]) => c[1] as string).join('');
+    expect(msg).toContain('/skill');
+    expect(msg).toContain('/pay');
+    expect(msg).toContain('/examine');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /examine
+// ---------------------------------------------------------------------------
+
+describe('/examine', () => {
+  it('shows target name and hold', () => {
+    const { mp, store, bus } = setup();
+    store.update(2, { holdId: 'rift' });
+    dispatchCommand(mp, store, bus, 1, '/examine Farengar');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('Farengar'));
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('rift'));
+  });
+
+  it('shows target faction memberships', () => {
+    const { mp, store, bus } = setup();
+    factions.joinFaction(mp, store, bus, 2, 'bardsCollege');
+    dispatchCommand(mp, store, bus, 1, '/examine Farengar');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('bardsCollege'));
+  });
+
+  it('shows target active bounties', () => {
+    const { mp, store, bus } = setup();
+    store.update(2, { bounty: { haafingar: 400 } });
+    dispatchCommand(mp, store, bus, 1, '/examine Farengar');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('haafingar: 400'));
+  });
+
+  it('sends error for unknown player name', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 1, '/examine Ulfric');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('"success":false'));
   });
 });

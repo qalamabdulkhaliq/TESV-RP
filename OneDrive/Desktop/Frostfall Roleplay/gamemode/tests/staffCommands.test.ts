@@ -448,3 +448,63 @@ describe('/treasury withdraw', () => {
     expect(mp.sendCustomPacket).toHaveBeenCalledWith(1, expect.stringContaining('"success":false'));
   });
 });
+
+// ---------------------------------------------------------------------------
+// /help role filtering (staff setup has both player and staff commands registered)
+// ---------------------------------------------------------------------------
+
+describe('/help role filtering', () => {
+  it('staff sees more commands than a plain player', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 2, '/help'); // staff (player 2)
+    dispatchCommand(mp, store, bus, 3, '/help'); // plain player (player 3)
+    const staffMsg = (mp.sendCustomPacket as jest.Mock).mock.calls
+      .filter((c: unknown[]) => c[0] === 2).map((c: unknown[]) => c[1] as string).join('');
+    const playerMsg = (mp.sendCustomPacket as jest.Mock).mock.calls
+      .filter((c: unknown[]) => c[0] === 3).map((c: unknown[]) => c[1] as string).join('');
+    expect(staffMsg.length).toBeGreaterThan(playerMsg.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /hold set (staff-gated sub-command of /hold)
+// ---------------------------------------------------------------------------
+
+describe('/hold set', () => {
+  it('assigns target player to a hold and persists', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 2, '/hold set Hadvar whiterun');
+    expect(store.get(3)?.holdId).toBe('whiterun');
+    expect(mp.set).toHaveBeenCalledWith(3, 'ff_holdId', 'whiterun');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(2, expect.stringContaining('whiterun'));
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(3, expect.stringContaining('whiterun'));
+  });
+
+  it('dispatches holdAssigned event', () => {
+    const { mp, store, bus } = setup();
+    let fired = false;
+    bus.on('holdAssigned', () => { fired = true; });
+    dispatchCommand(mp, store, bus, 2, '/hold set Hadvar rift');
+    expect(fired).toBe(true);
+  });
+
+  it('sends failure for unknown hold', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 2, '/hold set Hadvar gondor');
+    expect(store.get(3)?.holdId).toBeNull();
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(2, expect.stringContaining('"success":false'));
+  });
+
+  it('sends failure for unknown player name', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 2, '/hold set Ulfric whiterun');
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(2, expect.stringContaining('"success":false'));
+  });
+
+  it('rejects if caller is a plain player', () => {
+    const { mp, store, bus } = setup();
+    dispatchCommand(mp, store, bus, 3, '/hold set Jorrvaskr whiterun');
+    expect(store.get(1)?.holdId).toBeNull();
+    expect(mp.sendCustomPacket).toHaveBeenCalledWith(3, expect.stringContaining('"success":false'));
+  });
+});

@@ -107,8 +107,13 @@ export function releasePlayer(
   return true;
 }
 
+export function initCaptivity(mp: Mp, store: PlayerStore, bus: EventBus): void {
+  setInterval(() => checkExpiredCaptivity(mp, store, bus), 5 * 60_000);
+  console.log('[Captivity] Initialized — 24h expiry check every 5 min');
+}
+
 /**
- * Called on server tick (e.g., every 60s).  Releases any players whose
+ * Called on server tick (every 5 min via initCaptivity).  Releases any players whose
  * 24-hour captivity timer has expired.
  */
 export function checkExpiredCaptivity(

@@ -24,15 +24,18 @@ interface SpawnPoint {
 }
 
 export const HOLD_TEMPLE_SPAWNS: Record<HoldId, SpawnPoint> = {
-  whiterun:   { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Temple of Kynareth' },
-  eastmarch:  { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Temple of Talos' },
-  rift:       { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Temple of Mara' },
-  haafingar:  { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Temple of the Divines' },
-  reach:      { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Temple of Dibella' },
-  pale:       { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Hall of the Dead, Dawnstar' },
-  falkreath:  { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Hall of the Dead, Falkreath' },
-  hjaalmarch: { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'Morthal Shrine' },
-  winterhold: { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'College of Winterhold Courtyard' },
+  // Coords from Red House xelib/coc-markers.json (whiterun/reach/haafingar/winterhold confirmed).
+  // eastmarch/rift/pale/falkreath/hjaalmarch: temple not in Red House data — need CK formId + pos.
+  // TODO: replace placeholder pos/cellOrWorldDesc for those 5 holds with real temple interiors.
+  whiterun:   { pos: [225.6,    1080.1,   63.0],     cellOrWorldDesc: '0165A7:Skyrim.esm', label: 'Temple of Kynareth' },
+  eastmarch:  { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'TODO: WindhelmHalloftheDead — need formId + pos from CK' },
+  rift:       { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'TODO: RiftenTempleofMara — need formId + pos from CK' },
+  reach:      { pos: [-1863.8,  -1378.3,  66.1],     cellOrWorldDesc: '016DF3:Skyrim.esm', label: 'Temple of Dibella' },
+  haafingar:  { pos: [1569.1,   -709.4,   0],        cellOrWorldDesc: '016A02:Skyrim.esm', label: 'Temple of the Divines' },
+  pale:       { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'TODO: DawnstarHalloftheDead — need formId + pos from CK' },
+  falkreath:  { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'TODO: FalkreathHalloftheDead — need formId + pos from CK' },
+  hjaalmarch: { pos: [0, 0, 0], cellOrWorldDesc: null, label: 'TODO: Morthal temple/shrine — need formId + pos from CK' },
+  winterhold: { pos: [-22.7,    -2985.5,  0.0],      cellOrWorldDesc: '01380E:Skyrim.esm', label: 'College of Winterhold' },
 };
 
 // ---------------------------------------------------------------------------

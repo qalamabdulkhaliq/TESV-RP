@@ -3,13 +3,15 @@ import type { EventBus } from './events';
 import type { PlayerStore } from './store';
 import type { SkillId, HoldId } from './types';
 import { SKILL_IDS, ALL_HOLDS } from './types';
-import { registerCommand, sendFeedback, resolvePlayer } from './commands';
+import { registerCommand, sendFeedback, resolvePlayer, getCommandNames } from './commands';
 import { hasPermission } from './permissions';
 import { startLecture, joinLecture, endLecture } from './college';
 import { startTraining, joinTraining, endTraining } from './training';
 import { getSkillXp, getSkillCap, getSkillLevel } from './skills';
 import { transferGold } from './economy';
+import { getGold } from './skymp';
 import { getAllBounties, addBounty, clearBounty } from './bounty';
+import { getPlayerMemberships } from './factions';
 import { capturePlayer, releasePlayer } from './captivity';
 import { requestProperty, getPropertiesByHold, approveProperty, denyProperty, summonProperty, setPropertyPrice } from './housing';
 
@@ -157,6 +159,123 @@ export function initPlayerCommands(mp: Mp, store: PlayerStore, bus: EventBus): v
     }
     releasePlayer(mp, store, bus, targetId);
     sendFeedback(mp, playerId, `${target.name} has been released.`);
+  });
+
+  // /status — show own state
+  registerCommand('status', 'player', ({ mp, store, playerId }) => {
+    const player = store.get(playerId);
+    if (!player) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+
+    const gold = getGold(mp, player.actorId);
+    const hold = player.holdId ?? 'none';
+    const hunger = `${player.hungerLevel}/10`;
+    const drunk  = `${player.drunkLevel}/10`;
+
+    const memberships = getPlayerMemberships(mp, store, playerId);
+    const factionLine = memberships.length
+      ? memberships.map(m => `${m.factionId} (rank ${m.rank})`).join(', ')
+      : 'none';
+
+    const bountyEntries = Object.entries(player.bounty).filter(([, v]) => v > 0);
+    const bountyLine = bountyEntries.length
+      ? bountyEntries.map(([h, v]) => `${h}: ${v}`).join(', ')
+      : 'none';
+
+    const lines = [
+      `Hold: ${hold}`,
+      `Septims: ${gold}`,
+      `Hunger: ${hunger}  Drunk: ${drunk}`,
+      `Factions: ${factionLine}`,
+      `Bounties: ${bountyLine}`,
+    ];
+    sendFeedback(mp, playerId, lines.join('\n'));
+  });
+
+  // /help — role-aware command list
+  registerCommand('help', 'player', ({ mp, playerId }) => {
+    const names = getCommandNames(mp, playerId);
+    sendFeedback(mp, playerId, 'Commands:\n' + names.join('\n'));
+  });
+
+  // /examine [name] — inspect another player's public profile
+  registerCommand('examine', 'player', ({ mp, store, playerId, args }) => {
+    const targetId = resolvePlayer(store, args[0] ?? '');
+    if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+    const target = store.get(targetId)!;
+
+    const hold = target.holdId ?? 'none';
+
+    const memberships = getPlayerMemberships(mp, store, targetId);
+    const factionLine = memberships.length
+      ? memberships.map(m => `${m.factionId} (rank ${m.rank})`).join(', ')
+      : 'none';
+
+    const bountyEntries = Object.entries(target.bounty).filter(([, v]) => v > 0);
+    const bountyLine = bountyEntries.length
+      ? bountyEntries.map(([h, v]) => `${h}: ${v}`).join(', ')
+      : 'none';
+
+    const lines = [
+      `${target.name} [${hold}]`,
+      `Factions: ${factionLine}`,
+      `Bounties: ${bountyLine}`,
+    ];
+    sendFeedback(mp, playerId, lines.join('\n'));
+  });
+
+  // /hold                      — show your current hold
+  // /hold join [holdId]       — declare allegiance to a hold
+  // /hold leave               — leave your hold
+  // /hold set [name] [holdId] — staff-only: assign another player
+  registerCommand('hold', 'player', ({ mp, store, bus, playerId, args }) => {
+    const sub = args[0];
+
+    if (sub === 'set') {
+      if (!hasPermission(mp, playerId, 'staff')) {
+        sendFeedback(mp, playerId, 'You do not have permission to use this command.', false);
+        return;
+      }
+      const targetId = resolvePlayer(store, args[1] ?? '');
+      if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+      const holdId = args[2] as HoldId;
+      if (!ALL_HOLDS.includes(holdId)) {
+        sendFeedback(mp, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
+        return;
+      }
+      store.update(targetId, { holdId });
+      mp.set(targetId, 'ff_holdId', holdId);
+      bus.dispatch({ type: 'holdAssigned', payload: { playerId: targetId, holdId, assignedBy: playerId }, timestamp: Date.now() });
+      const name = store.get(targetId)?.name ?? 'Unknown';
+      sendFeedback(mp, playerId, `${name} assigned to ${holdId}.`);
+      sendFeedback(mp, targetId, `You have been assigned to ${holdId}.`);
+
+    } else if (sub === 'join') {
+      const holdId = args[1] as HoldId;
+      if (!ALL_HOLDS.includes(holdId)) {
+        sendFeedback(mp, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
+        return;
+      }
+      store.update(playerId, { holdId });
+      mp.set(playerId, 'ff_holdId', holdId);
+      bus.dispatch({ type: 'holdAssigned', payload: { playerId, holdId, assignedBy: playerId }, timestamp: Date.now() });
+      sendFeedback(mp, playerId, `You have joined ${holdId}.`);
+
+    } else if (sub === 'leave') {
+      const player = store.get(playerId);
+      if (!player?.holdId) {
+        sendFeedback(mp, playerId, 'You are not assigned to any hold.', false);
+        return;
+      }
+      const prev = player.holdId;
+      store.update(playerId, { holdId: null });
+      mp.set(playerId, 'ff_holdId', null);
+      sendFeedback(mp, playerId, `You have left ${prev}.`);
+
+    } else {
+      const player = store.get(playerId);
+      const hold = player?.holdId ?? 'none';
+      sendFeedback(mp, playerId, `Your hold: ${hold}`);
+    }
   });
 
   // /property list | /property request [id] — player

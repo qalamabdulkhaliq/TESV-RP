@@ -55,6 +55,13 @@ export function sendFeedback(mp: Mp, playerId: PlayerId, message: string, succes
   sendPacket(mp, playerId, 'commandFeedback', { message, success });
 }
 
+export function getCommandNames(mp: Mp, playerId: PlayerId): string[] {
+  return [...registry.entries()]
+    .filter(([, entry]) => hasPermission(mp, playerId, entry.permission))
+    .map(([name]) => `/${name}`)
+    .sort();
+}
+
 export function dispatchCommand(
   mp: Mp,
   store: PlayerStore,

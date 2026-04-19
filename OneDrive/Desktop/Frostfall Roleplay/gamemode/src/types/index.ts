@@ -161,7 +161,8 @@ export type GameEventType =
   | 'stipendTick'
   | 'roleChanged'
   | 'propertySummoned'
-  | 'treasuryChanged';
+  | 'treasuryChanged'
+  | 'holdAssigned';
 
 export interface GameEvent<T = unknown> {
   type: GameEventType;

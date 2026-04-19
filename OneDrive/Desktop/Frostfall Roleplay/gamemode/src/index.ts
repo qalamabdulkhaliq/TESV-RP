@@ -13,6 +13,8 @@
  */
 
 import type { Mp } from './skymp';
+import type { HoldId } from './types';
+import { ALL_HOLDS } from './types';
 import { EventBus } from './events';
 import { PlayerStore } from './store';
 
@@ -33,12 +35,9 @@ import { initTreasury }        from './treasury';
 import { initStaffCommands }   from './staffCommands';
 import { initCombat }          from './combat';
 import { initMagic }           from './magic';
-// Future system imports (uncomment as each plan is executed):
-// import { initResources } from './resources';
-// import { initKoid }      from './koid';
-// import { initNvfl }      from './nvfl';
-// import { initCaptivity } from './captivity';
-// import { initPrison }    from './prison';
+import { initCaptivity }       from './captivity';
+// koid, nvfl, resources, prison are pure-logic modules — no init required;
+// they are imported directly by the command handlers that use them.
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -66,6 +65,7 @@ initSkills(mp, store, bus);
 initTraining(mp, store, bus);
 initCombat(mp, store, bus);
 initMagic(mp, store, bus);
+initCaptivity(mp, store, bus);
 initPlayerCommands(mp, store, bus);
 initTreasury(mp);
 initStaffCommands(mp, store, bus);
@@ -78,7 +78,12 @@ mp.on('connect', (userId: number) => {
   const actorId = mp.getUserActor(userId);
   const name = mp.getActorName(actorId);
 
-  const state = store.registerPlayer(userId, actorId, name);
+  store.registerPlayer(userId, actorId, name);
+
+  const savedHoldId = mp.get(userId, 'ff_holdId');
+  if (typeof savedHoldId === 'string' && ALL_HOLDS.includes(savedHoldId as HoldId)) {
+    store.update(userId, { holdId: savedHoldId as HoldId });
+  }
 
   bus.dispatch({
     type: 'playerJoined',
