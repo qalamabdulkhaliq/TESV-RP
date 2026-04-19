@@ -57,6 +57,12 @@ export interface Mp extends ScampServer {
   makeEventSource(name: string, functionBody: string): void;
   /** Find actors by a custom indexed property value */
   findFormsByPropertyValue(propertyName: string, value: unknown): number[];
+  /**
+   * SkyMP death hook. Assign a function to intercept actor death events.
+   * Return false to block the default auto-respawn (RespawnWithDelay).
+   * Verified against ScampServerListener.cpp and test_isdead.js.
+   */
+  onDeath: ((actorId: number, killerId: number) => boolean | void) | undefined;
 }
 
 export interface MakePropertyOptions {

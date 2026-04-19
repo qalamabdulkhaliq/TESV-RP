@@ -16,6 +16,7 @@ import type { Mp } from './skymp';
 import { EventBus } from './events';
 import { PlayerStore } from './store';
 
+import { initChat, broadcastToHold, sendChatMessage } from './chat';
 import { initHunger }   from './hunger';
 import { initDrunkBar } from './drunkBar';
 import { initEconomy }  from './economy';
@@ -30,15 +31,14 @@ import { dispatchCommand }     from './commands';
 import { initPlayerCommands }  from './playerCommands';
 import { initTreasury }        from './treasury';
 import { initStaffCommands }   from './staffCommands';
+import { initCombat }          from './combat';
+import { initMagic }           from './magic';
 // Future system imports (uncomment as each plan is executed):
 // import { initResources } from './resources';
 // import { initKoid }      from './koid';
-// import { initCombat }    from './combat';
 // import { initNvfl }      from './nvfl';
 // import { initCaptivity } from './captivity';
 // import { initPrison }    from './prison';
-// import { initFactions }  from './factions';
-// import { initCollege }   from './college';
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -53,6 +53,7 @@ const store = new PlayerStore();
 // SYSTEMS
 // ---------------------------------------------------------------------------
 
+initChat(mp, store, bus);
 initHunger(mp, store, bus);
 initDrunkBar(mp, store, bus);
 initEconomy(mp, store, bus);
@@ -63,6 +64,8 @@ initFactions(mp, store, bus);
 initCollege(mp, store, bus);
 initSkills(mp, store, bus);
 initTraining(mp, store, bus);
+initCombat(mp, store, bus);
+initMagic(mp, store, bus);
 initPlayerCommands(mp, store, bus);
 initTreasury(mp);
 initStaffCommands(mp, store, bus);
@@ -101,6 +104,30 @@ mp.on('disconnect', (userId: number) => {
   console.log(`[Frostfall] - ${name} disconnected`);
 });
 
+// ---------------------------------------------------------------------------
+// Chat + command bridge
+// ---------------------------------------------------------------------------
+
+// _ff_chat fires when a player sends text via the browser chat widget.
+// Event name starts with '_' — required by ActionListener::OnCustomEvent.
+// refrId is the actor formId; text is the trimmed message or /command.
+(mp as unknown as Record<string, unknown>)['_ff_chat'] = (refrId: number, text: string) => {
+  try {
+    const userId = mp.getUserByActor(refrId);
+    const player = store.get(userId);
+    if (!player || typeof text !== 'string' || !text.trim()) return;
+    const trimmed = text.trim();
+    if (trimmed.startsWith('/')) {
+      dispatchCommand(mp, store, bus, userId, trimmed);
+    } else {
+      broadcastToHold(mp, store, userId, `[${player.name}]: ${trimmed}`);
+    }
+  } catch (err) {
+    console.error('[Frostfall] _ff_chat error:', err);
+  }
+};
+
+// Fallback: some clients may send a customPacket directly.
 mp.on('customPacket', (userId: number, rawContent: string) => {
   const player = store.get(userId);
   if (!player) return;

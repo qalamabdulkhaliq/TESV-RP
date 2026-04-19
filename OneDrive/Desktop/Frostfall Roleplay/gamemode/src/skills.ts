@@ -8,17 +8,23 @@ import { getPlayerMemberships } from './factions';
 // Constants
 // ---------------------------------------------------------------------------
 
-export const SKILL_LEVEL_XP = 10;
+/**
+ * XP thresholds for each skill tier (index = tier level 0–5).
+ * Tier 0→1 requires 2,400 XP (~24h active play at 100 XP/h).
+ * Each subsequent tier doubles the required session time.
+ */
+export const TIER_XP = [0, 2400, 7200, 16800, 36000, 72000] as const;
+export const TIER_NAMES = ['novice', 'apprentice', 'journeyman', 'adept', 'expert', 'master'] as const;
 
 export const DEFAULT_SKILL_CAP: Record<SkillId, number> = {
-  destruction:  250,
-  restoration:  250,
-  alteration:   250,
-  conjuration:  250,
-  illusion:     250,
-  smithing:     250,
-  enchanting:   250,
-  alchemy:      250,
+  destruction:  TIER_XP[1],
+  restoration:  TIER_XP[1],
+  alteration:   TIER_XP[1],
+  conjuration:  TIER_XP[1],
+  illusion:     TIER_XP[1],
+  smithing:     TIER_XP[1],
+  enchanting:   TIER_XP[1],
+  alchemy:      TIER_XP[1],
 };
 
 export const FACTION_SKILL_CAP_BONUSES: Partial<Record<FactionId, Array<{
@@ -26,26 +32,26 @@ export const FACTION_SKILL_CAP_BONUSES: Partial<Record<FactionId, Array<{
   caps: Partial<Record<SkillId, number>>;
 }>>> = {
   collegeOfWinterhold: [
-    { minRank: 1, caps: { destruction: 500, restoration: 500, alteration: 500, conjuration: 500, illusion: 500 } },
-    { minRank: 2, caps: { destruction: 750, restoration: 750, alteration: 750, conjuration: 750, illusion: 750 } },
-    { minRank: 3, caps: { destruction: 1000, restoration: 1000, alteration: 1000, conjuration: 1000, illusion: 1000 } },
+    { minRank: 1, caps: { destruction: TIER_XP[2], restoration: TIER_XP[2], alteration: TIER_XP[2], conjuration: TIER_XP[2], illusion: TIER_XP[2] } },
+    { minRank: 2, caps: { destruction: TIER_XP[3], restoration: TIER_XP[3], alteration: TIER_XP[3], conjuration: TIER_XP[3], illusion: TIER_XP[3] } },
+    { minRank: 3, caps: { destruction: TIER_XP[4], restoration: TIER_XP[4], alteration: TIER_XP[4], conjuration: TIER_XP[4], illusion: TIER_XP[4] } },
   ],
   companions: [
-    { minRank: 1, caps: { smithing: 500 } },
-    { minRank: 2, caps: { smithing: 750 } },
-    { minRank: 3, caps: { smithing: 1000 } },
+    { minRank: 1, caps: { smithing: TIER_XP[2] } },
+    { minRank: 2, caps: { smithing: TIER_XP[3] } },
+    { minRank: 3, caps: { smithing: TIER_XP[4] } },
   ],
   eastEmpireCompany: [
-    { minRank: 1, caps: { smithing: 500, enchanting: 500, alchemy: 500 } },
-    { minRank: 2, caps: { smithing: 750, enchanting: 750, alchemy: 750 } },
+    { minRank: 1, caps: { smithing: TIER_XP[2], enchanting: TIER_XP[2], alchemy: TIER_XP[2] } },
+    { minRank: 2, caps: { smithing: TIER_XP[3], enchanting: TIER_XP[3], alchemy: TIER_XP[3] } },
   ],
   thievesGuild: [
-    { minRank: 1, caps: { alchemy: 500 } },
-    { minRank: 2, caps: { alchemy: 750 } },
+    { minRank: 1, caps: { alchemy: TIER_XP[2] } },
+    { minRank: 2, caps: { alchemy: TIER_XP[3] } },
   ],
   bardsCollege: [
-    { minRank: 1, caps: { enchanting: 500 } },
-    { minRank: 2, caps: { enchanting: 750 } },
+    { minRank: 1, caps: { enchanting: TIER_XP[2] } },
+    { minRank: 2, caps: { enchanting: TIER_XP[3] } },
   ],
 };
 
@@ -110,7 +116,10 @@ function _loadBoosts(mp: Mp, playerId: PlayerId): StudyBoost[] {
 // ---------------------------------------------------------------------------
 
 export function getSkillLevel(xp: number): number {
-  return Math.floor(xp / SKILL_LEVEL_XP);
+  for (let i = TIER_XP.length - 1; i >= 0; i--) {
+    if (xp >= TIER_XP[i]) return i;
+  }
+  return 0;
 }
 
 // ---------------------------------------------------------------------------

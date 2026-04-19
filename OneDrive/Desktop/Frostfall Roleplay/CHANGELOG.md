@@ -5,6 +5,44 @@ Format: `[version] — date — summary`, with full system-level detail below ea
 
 ---
 
+## [1.0.0] — 2026-04-18 — Chat system: browser↔server bridge, commands, RP broadcast
+
+### Added
+- **`gamemode/src/chat.ts`** — Full chat system module:
+  - `initChat(mp, store, bus)` registers:
+    - `makeProperty('ff_chatMsg', { updateOwner: ... })` — server-to-browser message delivery. Each `sendChatMessage` call sets the property to `{ text, seq }` (seq ensures repeated text still triggers updateOwner). The updateOwner JS (running in Skyrim Platform context) calls `ctx.sp.browser.executeJavaScript(...)` to push the message into `window.chatMessages` and re-render the chat widget via `window.skyrimPlatform.widgets.set(...)`.
+    - `makeEventSource('_ff_chat', ...)` — browser-to-server input bridge. On connect, executes JS in the browser to init `window._ffChatSend`, `window.scrollToLastMessage`, and render the `{type:"chat"}` widget. Registers a `browserMessage` listener that calls `ctx.sendEvent(text)` when the player sends a message (browser calls `window.mp.send('chatSend', text)` → Skyrim Platform `browserMessage` → `ctx.sendEvent` → server `mp['_ff_chat']`).
+  - `sendChatMessage(mp, playerId, text)` — sends one message to a player's chat window
+  - `broadcastToHold(mp, store, senderId, text)` — broadcasts to all players in sender's hold (or all if holdless)
+- **`gamemode/src/index.ts`** — `mp['_ff_chat']` handler: resolves userId from refrId, routes `/commands` to `dispatchCommand` and plain text to `broadcastToHold`. Event name starts with `_` (required by ActionListener::OnCustomEvent). `initChat` called first in init sequence.
+- **`gamemode/src/combat.ts`** — Full combat module (replaces stub):
+  - `HOLD_TEMPLE_SPAWNS` — per-hold respawn points (placeholder coords, fill from CK)
+  - `initCombat` with `mp.onDeath` hook — intercepts death, calls `downPlayer`, returns `false` to block auto-respawn
+  - `_startBleedTimer` — `BLEED_OUT_MS = 180s` timer; on expiry revives actor in place and teleports to hold temple
+  - `revivePlayer` — revives downed actor in place (no teleport), notifies both parties
+  - `executePlayer` — clears bleed timer, revives, teleports to hold temple after 500ms delay
+  - `openLootSession` / `completeLootSession` — loot selection system with `LOOT_CAP_ITEMS = 3` and `LOOT_CAP_GOLD = 500`
+- **`gamemode/src/magic.ts`** — Magic system module (new):
+  - `SPELL_SCHOOL` map — 75 base-game spell formIds → school (destruction/restoration/alteration/illusion/conjuration)
+  - `initMagic` — wires `onPapyrusEvent:OnSpellCast` handler; awards `XP_ON_CAST = 3` per cast; triggers Detect Life response for spells 0x1A4CD and 0x2ACD3
+  - `handleSkillDice` — handles `/skill-dice` subcommands (init, wolf/vampus, heal/self-attack, magic/weapon/defence/initiative rolls)
+- **`gamemode/src/skills.ts`** — Tier system replaces flat XP:
+  - `TIER_XP = [0, 2400, 7200, 16800, 36000, 72000]` — thresholds for tiers 0–5 (novice→master)
+  - `TIER_NAMES = ['novice', 'apprentice', 'journeyman', 'adept', 'expert', 'master']`
+  - `getSkillLevel(xp)` now uses tier lookup (not `Math.floor(xp / 10)`)
+  - `DEFAULT_SKILL_CAP` = `TIER_XP[1]` = 2400 per skill (base players cap at apprentice)
+  - `FACTION_SKILL_CAP_BONUSES` ranks now use `TIER_XP[2/3/4]` (journeyman/adept/expert caps) instead of flat 500/750/1000
+- **`gamemode/src/commands.ts`** — `sendFeedback` now routes through `sendChatMessage` instead of `sendPacket`; command responses appear in the chat widget
+- **`gamemode/src/skymp.ts`** — Added `onDeath` property to `Mp` interface (returns `false` to block auto-respawn)
+- **`gamemode/src/types/index.ts`** — Added `playerBledOut`, `playerRevived`, `playerExecuted`, `playerLooted` to `GameEventType`
+
+### Design notes
+- Chat widget `send` callback (`window._ffChatSend`) is defined in the browser context inside `makeEventSource`. Each message call to `sendChatMessage` uses a monotonic `seq` counter so duplicate text strings still trigger property change events.
+- Temple spawn `cellOrWorldDesc` values are `null` — `_teleportToSpawn` skips the `locationalData` set until real CK coordinates are supplied. Bleed-out/execution silently revives in place until then.
+- `onPapyrusEvent:OnSpellCast` only fires if the SkyMP client forwards spell cast events — depends on Skyrim Platform hooks configured client-side.
+
+---
+
 ## [0.9.9] — 2026-04-18 — Fix: correct SkyMP event API (property assignment, not mp.on)
 
 ### Fixed
