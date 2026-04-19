@@ -10,7 +10,7 @@ import {
   _recordSessionStart,
   onSkillPlayerDisconnect,
   DEFAULT_SKILL_CAP,
-  SKILL_LEVEL_XP,
+  TIER_XP,
 } from '../src/skills';
 import { PlayerStore } from '../src/store';
 import { EventBus } from '../src/events';
@@ -44,17 +44,20 @@ describe('getSkillLevel', () => {
   it('returns 0 at 0 XP', () => {
     expect(getSkillLevel(0)).toBe(0);
   });
-  it('returns 0 below first threshold', () => {
-    expect(getSkillLevel(SKILL_LEVEL_XP - 1)).toBe(0);
+  it('returns 0 just below tier 1 threshold', () => {
+    expect(getSkillLevel(TIER_XP[1] - 1)).toBe(0);
   });
-  it('returns 1 at exactly SKILL_LEVEL_XP', () => {
-    expect(getSkillLevel(SKILL_LEVEL_XP)).toBe(1);
+  it('returns 1 at exactly tier 1 threshold', () => {
+    expect(getSkillLevel(TIER_XP[1])).toBe(1);
   });
-  it('returns 24 at 249 XP', () => {
-    expect(getSkillLevel(249)).toBe(24);
+  it('returns 2 at tier 2 threshold', () => {
+    expect(getSkillLevel(TIER_XP[2])).toBe(2);
   });
-  it('returns 25 at 250 XP', () => {
-    expect(getSkillLevel(250)).toBe(25);
+  it('returns 5 at master tier threshold', () => {
+    expect(getSkillLevel(TIER_XP[5])).toBe(5);
+  });
+  it('returns 0 for XP below tier 1 (e.g. 250)', () => {
+    expect(getSkillLevel(250)).toBe(0);
   });
 });
 
@@ -87,13 +90,13 @@ describe('getSkillCap', () => {
   it('returns raised cap when player is in College at rank 1', () => {
     const { mp, store, bus } = setup();
     joinFaction(mp, store, bus, 1, 'collegeOfWinterhold', 1);
-    expect(getSkillCap(mp, store, 1, 'destruction')).toBe(500);
+    expect(getSkillCap(mp, store, 1, 'destruction')).toBe(TIER_XP[2]);
   });
 
   it('returns highest cap when player has rank 3', () => {
     const { mp, store, bus } = setup();
     joinFaction(mp, store, bus, 1, 'collegeOfWinterhold', 3);
-    expect(getSkillCap(mp, store, 1, 'destruction')).toBe(1000);
+    expect(getSkillCap(mp, store, 1, 'destruction')).toBe(TIER_XP[4]);
   });
 
   it('does not raise a cap for a skill not covered by that faction', () => {
@@ -106,7 +109,7 @@ describe('getSkillCap', () => {
     const { mp, store, bus } = setup();
     joinFaction(mp, store, bus, 1, 'companions', 1);
     joinFaction(mp, store, bus, 1, 'eastEmpireCompany', 2);
-    expect(getSkillCap(mp, store, 1, 'smithing')).toBe(750);
+    expect(getSkillCap(mp, store, 1, 'smithing')).toBe(TIER_XP[3]);
   });
 });
 
