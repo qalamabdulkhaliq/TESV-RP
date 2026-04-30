@@ -23,68 +23,68 @@ export function initStaffCommands(mp: Mp, store: PlayerStore, bus: EventBus): vo
   // /arrest [name] [holdId] — leader
   registerCommand('arrest', 'leader', ({ mp, store, bus, playerId, args }) => {
     const targetId = resolvePlayer(store, args[0] ?? '');
-    if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+    if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
     const holdId = args[1] as HoldId;
     if (!ALL_HOLDS.includes(holdId)) {
-      sendFeedback(mp, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
+      sendFeedback(mp, store, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
       return;
     }
     const ok = queueForSentencing(mp, store, bus, targetId, holdId, playerId, playerId);
     const name = store.get(targetId)?.name ?? 'Unknown';
-    sendFeedback(mp, playerId, ok ? `${name} arrested and queued for sentencing in ${holdId}.` : 'Could not arrest — player may already be queued.', ok);
+    sendFeedback(mp, store, playerId, ok ? `${name} arrested and queued for sentencing in ${holdId}.` : 'Could not arrest — player may already be queued.', ok);
   });
 
   // /sentence [name] [fine|release|banish] [amount?] — leader
   registerCommand('sentence', 'leader', ({ mp, store, bus, playerId, args }) => {
     const targetId = resolvePlayer(store, args[0] ?? '');
-    if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+    if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
     const type = args[1] as SentenceType;
     if (!VALID_SENTENCE_TYPES.includes(type)) {
-      sendFeedback(mp, playerId, 'Usage: /sentence [name] [fine|release|banish] [amount?]', false);
+      sendFeedback(mp, store, playerId, 'Usage: /sentence [name] [fine|release|banish] [amount?]', false);
       return;
     }
     let fineAmount: number | undefined;
     if (type === 'fine') {
       fineAmount = parseInt(args[2] ?? '', 10);
       if (isNaN(fineAmount) || fineAmount <= 0) {
-        sendFeedback(mp, playerId, 'Specify a fine amount: /sentence [name] fine [amount]', false);
+        sendFeedback(mp, store, playerId, 'Specify a fine amount: /sentence [name] fine [amount]', false);
         return;
       }
     }
     const ok = sentencePlayer(mp, store, bus, targetId, playerId, { type, fineAmount });
     const name = store.get(targetId)?.name ?? 'Unknown';
-    sendFeedback(mp, playerId, ok ? `${name} sentenced: ${type}.` : 'Player is not in the sentencing queue.', ok);
+    sendFeedback(mp, store, playerId, ok ? `${name} sentenced: ${type}.` : 'Player is not in the sentencing queue.', ok);
   });
 
   // /down [name] — leader
   registerCommand('down', 'leader', ({ mp, store, bus, playerId, args }) => {
     const targetId = resolvePlayer(store, args[0] ?? '');
-    if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+    if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
     const ok = downPlayer(mp, store, bus, targetId, playerId);
     const name = store.get(targetId)?.name ?? 'Unknown';
-    sendFeedback(mp, playerId, ok ? `${name} has been downed.` : `${name} is already downed.`, ok);
+    sendFeedback(mp, store, playerId, ok ? `${name} has been downed.` : `${name} is already downed.`, ok);
   });
 
   // /rise [name] — leader
   registerCommand('rise', 'leader', ({ mp, store, bus, playerId, args }) => {
     const targetId = resolvePlayer(store, args[0] ?? '');
-    if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+    if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
     const ok = risePlayer(mp, store, bus, targetId);
     const name = store.get(targetId)?.name ?? 'Unknown';
-    sendFeedback(mp, playerId, ok ? `${name} has risen.` : `${name} is not downed.`, ok);
+    sendFeedback(mp, store, playerId, ok ? `${name} has risen.` : `${name} is not downed.`, ok);
   });
 
   // /role set [name] [role] — staff
   registerCommand('role', 'staff', ({ mp, store, bus, playerId, args }) => {
     if (args[0] !== 'set') {
-      sendFeedback(mp, playerId, 'Usage: /role set [name] [player|leader|staff]', false);
+      sendFeedback(mp, store, playerId, 'Usage: /role set [name] [player|leader|staff]', false);
       return;
     }
     const targetId = resolvePlayer(store, args[1] ?? '');
-    if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+    if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
     const role = args[2] as PlayerRole;
     if (!VALID_ROLES.includes(role)) {
-      sendFeedback(mp, playerId, 'Unknown role. Valid: player, leader, staff', false);
+      sendFeedback(mp, store, playerId, 'Unknown role. Valid: player, leader, staff', false);
       return;
     }
     setPlayerRole(mp, targetId, role);
@@ -94,7 +94,7 @@ export function initStaffCommands(mp: Mp, store: PlayerStore, bus: EventBus): vo
       timestamp: Date.now(),
     });
     const name = store.get(targetId)?.name ?? 'Unknown';
-    sendFeedback(mp, playerId, `${name}'s role set to ${role}.`);
+    sendFeedback(mp, store, playerId, `${name}'s role set to ${role}.`);
   });
 
   // /faction add [name] [factionId]    — staff
@@ -105,47 +105,47 @@ export function initStaffCommands(mp: Mp, store: PlayerStore, bus: EventBus): vo
 
     if (sub === 'add') {
       const targetId = resolvePlayer(store, args[1] ?? '');
-      if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+      if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
       const factionId = args[2] as FactionId;
       if (!VALID_FACTIONS.includes(factionId)) {
-        sendFeedback(mp, playerId, `Unknown faction. Valid: ${VALID_FACTIONS.join(', ')}`, false);
+        sendFeedback(mp, store, playerId, `Unknown faction. Valid: ${VALID_FACTIONS.join(', ')}`, false);
         return;
       }
       const ok = joinFaction(mp, store, bus, targetId, factionId);
       const name = store.get(targetId)?.name ?? 'Unknown';
-      sendFeedback(mp, playerId, ok ? `${name} added to ${factionId}.` : `${name} is already a member.`, ok);
+      sendFeedback(mp, store, playerId, ok ? `${name} added to ${factionId}.` : `${name} is already a member.`, ok);
 
     } else if (sub === 'remove') {
       const targetId = resolvePlayer(store, args[1] ?? '');
-      if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+      if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
       const factionId = args[2] as FactionId;
       if (!VALID_FACTIONS.includes(factionId)) {
-        sendFeedback(mp, playerId, `Unknown faction. Valid: ${VALID_FACTIONS.join(', ')}`, false);
+        sendFeedback(mp, store, playerId, `Unknown faction. Valid: ${VALID_FACTIONS.join(', ')}`, false);
         return;
       }
       const ok = leaveFaction(mp, store, bus, targetId, factionId);
       const name = store.get(targetId)?.name ?? 'Unknown';
-      sendFeedback(mp, playerId, ok ? `${name} removed from ${factionId}.` : `${name} is not a member.`, ok);
+      sendFeedback(mp, store, playerId, ok ? `${name} removed from ${factionId}.` : `${name} is not a member.`, ok);
 
     } else if (sub === 'rank') {
       const targetId = resolvePlayer(store, args[1] ?? '');
-      if (!targetId) { sendFeedback(mp, playerId, 'Player not found.', false); return; }
+      if (!targetId) { sendFeedback(mp, store, playerId, 'Player not found.', false); return; }
       const factionId = args[2] as FactionId;
       if (!VALID_FACTIONS.includes(factionId)) {
-        sendFeedback(mp, playerId, `Unknown faction. Valid: ${VALID_FACTIONS.join(', ')}`, false);
+        sendFeedback(mp, store, playerId, `Unknown faction. Valid: ${VALID_FACTIONS.join(', ')}`, false);
         return;
       }
       const rank = parseInt(args[3] ?? '', 10);
       if (isNaN(rank) || rank < 0) {
-        sendFeedback(mp, playerId, 'Usage: /faction rank [name] [factionId] [rank]', false);
+        sendFeedback(mp, store, playerId, 'Usage: /faction rank [name] [factionId] [rank]', false);
         return;
       }
       const ok = setFactionRank(mp, store, bus, targetId, factionId, rank);
       const name = store.get(targetId)?.name ?? 'Unknown';
-      sendFeedback(mp, playerId, ok ? `${name}'s rank in ${factionId} set to ${rank}.` : `${name} is not a member of ${factionId}.`, ok);
+      sendFeedback(mp, store, playerId, ok ? `${name}'s rank in ${factionId} set to ${rank}.` : `${name} is not a member of ${factionId}.`, ok);
 
     } else {
-      sendFeedback(mp, playerId, 'Usage: /faction add|remove|rank [name] [factionId] [rank?]', false);
+      sendFeedback(mp, store, playerId, 'Usage: /faction add|remove|rank [name] [factionId] [rank?]', false);
     }
   });
 
@@ -159,47 +159,47 @@ export function initStaffCommands(mp: Mp, store: PlayerStore, bus: EventBus): vo
       const holdId = args[1] as HoldId | undefined;
       if (holdId) {
         if (!ALL_HOLDS.includes(holdId)) {
-          sendFeedback(mp, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
+          sendFeedback(mp, store, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
           return;
         }
         const balance = getTreasuryBalance(mp, holdId);
-        sendFeedback(mp, playerId, `${holdId} treasury: ${balance} Septims`);
+        sendFeedback(mp, store, playerId, `${holdId} treasury: ${balance} Septims`);
       } else {
         const balances = getAllTreasuryBalances(mp);
         const lines = ALL_HOLDS.map(h => `${h}: ${balances[h]}`);
-        sendFeedback(mp, playerId, 'Hold Treasuries:\n' + lines.join('\n'));
+        sendFeedback(mp, store, playerId, 'Hold Treasuries:\n' + lines.join('\n'));
       }
 
     } else if (sub === 'deposit') {
       const holdId = args[1] as HoldId;
       if (!ALL_HOLDS.includes(holdId)) {
-        sendFeedback(mp, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
+        sendFeedback(mp, store, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
         return;
       }
       const amount = parseInt(args[2] ?? '', 10);
       if (isNaN(amount) || amount <= 0) {
-        sendFeedback(mp, playerId, 'Amount must be a positive number.', false);
+        sendFeedback(mp, store, playerId, 'Amount must be a positive number.', false);
         return;
       }
       depositToTreasury(mp, bus, holdId, amount);
-      sendFeedback(mp, playerId, `Deposited ${amount} Septims into ${holdId} treasury.`);
+      sendFeedback(mp, store, playerId, `Deposited ${amount} Septims into ${holdId} treasury.`);
 
     } else if (sub === 'withdraw') {
       const holdId = args[1] as HoldId;
       if (!ALL_HOLDS.includes(holdId)) {
-        sendFeedback(mp, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
+        sendFeedback(mp, store, playerId, `Unknown hold. Valid: ${ALL_HOLDS.join(', ')}`, false);
         return;
       }
       const amount = parseInt(args[2] ?? '', 10);
       if (isNaN(amount) || amount <= 0) {
-        sendFeedback(mp, playerId, 'Amount must be a positive number.', false);
+        sendFeedback(mp, store, playerId, 'Amount must be a positive number.', false);
         return;
       }
       const ok = withdrawFromTreasury(mp, bus, holdId, amount);
-      sendFeedback(mp, playerId, ok ? `Withdrew ${amount} Septims from ${holdId} treasury.` : 'Insufficient treasury funds.', ok);
+      sendFeedback(mp, store, playerId, ok ? `Withdrew ${amount} Septims from ${holdId} treasury.` : 'Insufficient treasury funds.', ok);
 
     } else {
-      sendFeedback(mp, playerId, 'Usage: /treasury view [hold?] | /treasury deposit [hold] [amount] | /treasury withdraw [hold] [amount]', false);
+      sendFeedback(mp, store, playerId, 'Usage: /treasury view [hold?] | /treasury deposit [hold] [amount] | /treasury withdraw [hold] [amount]', false);
     }
   });
 }

@@ -50,8 +50,9 @@ export function resolvePlayer(store: PlayerStore, name: string): PlayerId | null
   return match ? match.id : null;
 }
 
-export function sendFeedback(mp: Mp, playerId: PlayerId, message: string, success = true): void {
-  sendChatMessage(mp, playerId, message);
+export function sendFeedback(mp: Mp, store: PlayerStore, playerId: PlayerId, message: string, success = true): void {
+  const player = store.get(playerId);
+  if (player) sendChatMessage(mp, player.actorId, message);
   sendPacket(mp, playerId, 'commandFeedback', { message, success });
 }
 
@@ -74,12 +75,12 @@ export function dispatchCommand(
 
   const entry = registry.get(parsed.command);
   if (!entry) {
-    sendFeedback(mp, playerId, `Unknown command: /${parsed.command}`, false);
+    sendFeedback(mp, store, playerId, `Unknown command: /${parsed.command}`, false);
     return;
   }
 
   if (!hasPermission(mp, playerId, entry.permission)) {
-    sendFeedback(mp, playerId, 'You do not have permission to use this command.', false);
+    sendFeedback(mp, store, playerId, 'You do not have permission to use this command.', false);
     return;
   }
 

@@ -1,7 +1,7 @@
 import type { Mp } from './skymp';
 import type { EventBus } from './events';
 import type { PlayerStore } from './store';
-import type { PlayerId } from './types';
+import type { PlayerId, ActorId } from './types';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -21,8 +21,8 @@ let _msgSeq = 0;
  * Triggers makeProperty updateOwner on the client, which pushes the text
  * into window.chatMessages and re-renders the chat widget.
  */
-export function sendChatMessage(mp: Mp, playerId: PlayerId, text: string): void {
-  mp.set(playerId, CHAT_MSG_KEY, { text, seq: ++_msgSeq });
+export function sendChatMessage(mp: Mp, actorId: ActorId, text: string): void {
+  mp.set(actorId, CHAT_MSG_KEY, { text, seq: ++_msgSeq });
 }
 
 /**
@@ -39,7 +39,7 @@ export function broadcastToHold(
   const holdId = sender?.holdId;
   for (const p of store.getAll()) {
     if (!holdId || p.holdId === holdId) {
-      sendChatMessage(mp, p.id, text);
+      sendChatMessage(mp, p.actorId, text);
     }
   }
 }
