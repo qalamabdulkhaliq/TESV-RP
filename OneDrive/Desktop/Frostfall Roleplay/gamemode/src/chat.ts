@@ -80,7 +80,7 @@ export function initChat(mp: Mp, _store: PlayerStore, _bus: EventBus): void {
   mp.makeEventSource('_ff_chat', `
     ctx.sp.browser.executeJavaScript(
       'if(!window.chatMessages)window.chatMessages=[];' +
-      'window._ffChatSend=function(t){if(window.mp&&window.mp.send)window.mp.send("chatSend",t);};' +
+      'window._ffChatSend=function(t){if(t&&t.trim())window.skyrimPlatform.sendMessage("chatSend",t);};' +
       'window.scrollToLastMessage=function(){var c=document.querySelector(".chat-list");if(c)c.scrollTop=c.scrollHeight;};' +
       'window.skyrimPlatform.widgets.set([{' +
       '  type:"chat",' +
