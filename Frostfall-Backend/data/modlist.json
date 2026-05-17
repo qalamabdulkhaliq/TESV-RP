@@ -1,0 +1,4 @@
+[
+  { "name": "SkyMP Client", "version": "0.8.2", "required": true, "enabled": true, "source": "backend" },
+  { "name": "Frostfall Collection", "required": true, "enabled": true, "source": "collection", "collectionSlug": "0fwxbh", "revisionId": 1 }
+]

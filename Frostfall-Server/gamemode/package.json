@@ -1,0 +1,18 @@
+{
+  "name": "gamemode",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "build:watch": "webpack --config webpack.config.js --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "webpack": "^5.106.2",
+    "webpack-cli": "^7.0.2"
+  }
+}

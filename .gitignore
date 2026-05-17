@@ -1,0 +1,65 @@
+# Editor/agent-local metadata
+.claude/
+.cursor/
+.vscode/
+
+# Node dependencies and caches
+node_modules/
+**/node_modules/
+.npm/
+.cache/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Secrets and live deployment config
+.env
+.env.*
+!.env.example
+server-settings.json
+server-settings-merged.json
+server-settings-dump.json
+server-settings.*.backup-*.json
+*.pem
+*.key
+
+# Host-local runtime state
+world/
+**/world/
+logs/
+**/logs/
+*.log
+*.jsonl
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Generated/backend release artifacts
+Frostfall-Backend/public/files/frostfall-client.zip
+Frostfall-Backend/public/files/root/
+Frostfall-Backend/data/files-version.json
+Frostfall-Backend/sources/client/
+Frostfall-Backend/sources/skse/*.exe
+Frostfall-Backend/sources/skse/*.dll
+
+# Skyrim/game assets are deployed separately, not committed here
+*.esm
+*.esp
+*.esl
+*.bsa
+*.ba2
+*.pex
+*.psc
+
+# Native/local binaries
+*.exe
+*.dll
+*.pdb
+*.node
+
+# OS noise
+Thumbs.db
+.DS_Store

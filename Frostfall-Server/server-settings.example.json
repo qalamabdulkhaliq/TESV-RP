@@ -1,0 +1,44 @@
+{
+  "dataDir": "data",
+
+  "name": "Your Server Name",
+  "port": 7777,
+  "maxPlayers": 100,
+
+  "offlineMode": true,
+  "master": "",
+  "masterKey": "replace-with-a-strong-random-secret",
+
+  "gamemodePath": "gamemode.js",
+
+  "loadOrder": [
+    "Skyrim.esm",
+    "Update.esm",
+    "Dawnguard.esm",
+    "HearthFires.esm",
+    "Dragonborn.esm",
+    "ccBGSSSE001-Fish.esm",
+    "ccQDRSSE001-SurvivalMode.esl",
+    "ccBGSSSE037-Curios.esl",
+    "ccBGSSSE025-AdvDSGS.esm",
+    "_ResourcePack.esl"
+  ],
+  "archives": [],
+
+  "npcEnabled": false,
+  "npcSettings": {},
+
+  "isPapyrusHotReloadEnabled": false,
+  "enableGamemodeDataUpdatesBroadcast": true,
+  "enableConsoleCommandsForAll": true,
+
+  "metricsAuth": { "user": "prometheus", "password": "replace-with-a-strong-password" },
+
+  "damageMultFormulaSettings": { "multiplier": 1.0 },
+
+  "discordAuth": {
+    "botToken": "Bot YOUR_BOT_TOKEN_HERE",
+    "guildId": "YOUR_GUILD_ID",
+    "banRoleId": "YOUR_BAN_ROLE_ID"
+  }
+}

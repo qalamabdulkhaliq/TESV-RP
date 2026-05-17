@@ -1,0 +1,23 @@
+[
+  {
+    "siteId": "whiterun_halted_stream_iron",
+    "activationKind": "mine",
+    "baseFormIds": [466163],
+    "targetFormIds": [],
+    "holdId": "whiterun"
+  },
+  {
+    "siteId": "whiterun_riverwood_lumber",
+    "activationKind": "mill",
+    "baseFormIds": [456006],
+    "targetFormIds": [],
+    "holdId": "whiterun"
+  },
+  {
+    "siteId": "whiterun_pelagia_wheat",
+    "activationKind": "farm",
+    "baseFormIds": [307386],
+    "targetFormIds": [],
+    "holdId": "whiterun"
+  }
+]

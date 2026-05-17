@@ -1,0 +1,48 @@
+/.claude/
+
+# Runtime world state and audit/chat logs are host-local.
+/world/
+/logs/
+*.log
+*.jsonl
+
+# Generated from .env or local deployment. May contain credentials.
+/server-settings.json
+/server-settings-merged.json
+/server-settings-dump.json
+/server-settings.*.backup-*.json
+/.env
+/.env.*
+
+# Dependencies and generated caches. Keep package-lock.json files trackable.
+/node_modules/
+/gamemode/node_modules/
+/gamemode-ts/node_modules/
+/.cache/
+/dist/
+/build/
+
+# Local-only development/reference folders.
+/gamemode-dev/
+/gamemode-docs/
+/plugin/
+
+# Skyrim plugins, archives, loose deployed assets, and generated manifests.
+# Source JSON under gamemode/data remains trackable.
+*.esm
+*.esp
+*.esl
+*.bsa
+*.ba2
+*.pex
+*.psc
+/data/
+
+# Signing/private keys and native/local binaries.
+signing-private.pem
+*.pem
+*.key
+*.exe
+*.dll
+*.pdb
+*.node

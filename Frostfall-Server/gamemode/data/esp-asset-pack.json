@@ -1,0 +1,65 @@
+{
+  "plugin": "FrostfallProduction.esp",
+  "packageName": "Frostfall Roleplay Asset Pack",
+  "records": [
+    {
+      "family": "productionActivator",
+      "editorId": "FFRP_Activator_ProductionMarker",
+      "localFormId": "0x800",
+      "type": "ACTI",
+      "purpose": "Generic server-validated production activation marker."
+    },
+    {
+      "family": "pinboard",
+      "editorId": "FFRP_Activator_PinboardWhiterun",
+      "localFormId": "0x801",
+      "type": "ACTI",
+      "purpose": "Physical hold pinboard that opens server-owned posts."
+    },
+    {
+      "family": "loom",
+      "editorId": "FFRP_Furniture_Loom",
+      "localFormId": "0x802",
+      "type": "FURN",
+      "purpose": "Tailoring station for cloth and clothing production."
+    },
+    {
+      "family": "mail",
+      "editorId": "FFRP_Activator_RavenPost",
+      "localFormId": "0x803",
+      "type": "ACTI",
+      "purpose": "Mail/courier pickup point for delayed IC correspondence."
+    },
+    {
+      "family": "lock",
+      "editorId": "FFRP_Lock_ServerBound",
+      "localFormId": "0x804",
+      "type": "KEYM",
+      "purpose": "Server-bound lock/key anchor for custom lockpicking and keys."
+    },
+    {
+      "family": "book",
+      "editorId": "FFRP_Book_ServerText",
+      "localFormId": "0x805",
+      "type": "BOOK",
+      "purpose": "Book shell whose text is selected from server-indexed authored content."
+    },
+    {
+      "family": "medical",
+      "editorId": "FFRP_Furniture_MedicalBed",
+      "localFormId": "0x806",
+      "type": "FURN",
+      "purpose": "Medical treatment/recovery station for server-owned injuries."
+    }
+  ],
+  "papyrusScripts": [
+    {
+      "name": "FFRP_ActivationReporter",
+      "role": "Reports activation local FormID, base FormID, cell, and actor to the SkyrimPlatform bridge."
+    },
+    {
+      "name": "FFRP_BlockVanillaActivation",
+      "role": "Blocks vanilla reward paths where the server must validate output."
+    }
+  ]
+}
